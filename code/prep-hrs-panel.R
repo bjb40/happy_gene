@@ -12,7 +12,7 @@ rm(list=ls())
 
 st = proc.time()[3]
 
-source("H:/projects/proposal/r_study/code/config.R",
+source("code/config~.R",
        echo =T, print.eval = T, keep.source=T)
 
 hrsdir = "H:/Academic Projects/Data Files/HRS/"
