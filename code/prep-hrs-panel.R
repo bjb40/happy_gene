@@ -43,6 +43,7 @@ vars = c(
   'hhidpn',
   #key dependant (growth) variable
   makeseq('r',waves,'cesd'),
+  makeseq('r',waves,'drinkn'),
   
   #interview date month and year
   makeseq('r',waves,'iwendm'),
@@ -203,7 +204,7 @@ longdat$unemp[longdat$lbrf %in% c(3,6:7)] = 1
 
 #prep ya recession cohorts based on age range
 yarange = c(18,22)
-recessions = read.csv(paste(outdir,'/recession.csv',sep=''))
+recessions = read.csv(paste(outdir,'recession.csv',sep=''))
 r_cohort = as.numeric(rep(NA,nrow(longdat)))
 r_intens = as.numeric(rep(0,nrow(longdat))) #measure intensity of recession
 
@@ -231,7 +232,8 @@ longdat$greatmod[longdat$rabyear > 1987] = 1
 #CHANGE NOT IN US TO MISSING: very few
 longdat$cendiv[longdat$cendiv == 11] = NA
 
-blsdat = read.csv(paste0(outdir,"blsdat.csv"))
+load(paste0(outdir,'blsdat.RData'))
+#blsdat = read.csv(paste0(outdir,"blsdat.csv"))
 
 #initialize current month "cm" and prior monh "pm" unemployment rate "uer"
 longdat$cm_uer = NA
@@ -258,7 +260,7 @@ for(i in 1:nrow(longdat)){
         blsdat$year == yr &
           blsdat$period == m &
           blsdat$region == r
-        ]
+        ][1]
       
       #update prior month and year for January interviews
       if(m==1){
@@ -271,7 +273,7 @@ for(i in 1:nrow(longdat)){
         blsdat$year == yr &
           blsdat$period == pm &
           blsdat$region == r
-        ]
+        ][1]
       if(i%%750 == 0){  print(c(i,m,yr,r,longdat[i,"cm_uer"],longdat[i,"pm_uer"]))}
       
     }
