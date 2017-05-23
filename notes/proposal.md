@@ -8,7 +8,7 @@ bibliography: ./citations/happy_gene.bib
 
 #Introduction
 
-This document outlines a proposal for three separate gene/environment studies using the HRS on subjective well-being/Depression. Broadly, this study can include measures of life satisfaction, happiness, cognition, depression, substance abuse, and other psychological or internalized processes. Many of these were recently used in a large GWAS [@okbay_genetic_2016], which has been cross-applied to the HRS [@domingue_genetic_2016]. This proposal (1) outlines basic social science literature on psychological disorders and subjective well-being, (2) examines the implication of incorporating genetic information to these theoretical models, and (3) propose three different studies.
+This document outlines a proposal for three separate gene/environment studies using the HRS on subjective well-being/Depression. Broadly, this study can include measures of life satisfaction, happiness, cognition, depression, substance abuse, and other psychological or internalized processes. Many of these were recently used in a large GWAS [@okbay_genetic_2016], which has been cross-applied to the HRS [@domingue_genetic_2016]. 
 
 Proposed study 1 is a fairly direct extension of the work by Domingue, et al. [-@domingue_genetic_2016]. Domingue, et al. find that different rates of decay in elevated depressive symptoms after a spouse dies are correlated with polygenic scores (PGS) calculated from the GWAS mentioned above. This proposal anticipates an identical design, but instead of using spousal death as the exogenous environmental treatment, it will use variability in economic conditions (unemployment rate, the great recession, and perhaps exposure to recessive periods in the past).
 
