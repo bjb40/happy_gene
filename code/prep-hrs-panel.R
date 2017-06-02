@@ -380,7 +380,9 @@ sink()
 #Write clean dataset
 #@@@@@@@@@@@@@@@@@@@@@
 
-write.csv(cleandat,file=paste0(outdir,'private~/cleanhrs.csv'),na='.')
+#write.csv(cleandat,file=paste0(outdir,'private~/cleanhrs.csv'),na='.')
+save(cleandat,file=paste0(outdir,'private~/cleandat.RData'))
+
 
 #@@@@@@@@@@@@@@@@@@@@@
 #output descriptive statistics for clean set
