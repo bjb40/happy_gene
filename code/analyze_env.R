@@ -181,13 +181,24 @@ plotFEsim(hlm2a.sim[ue,])
 hlm2b = lmer(cesd~iuer*(iret+iunemp) +
               md_uer*(md_ret+md_unemp) +
               factor(iwendy) + male + age + 
-              I(age^2) + marr + 
+              I(age^2) + marr + iatota + iitot + 
+               md_atota + md_itot +
               (1|hhidpn),
             data=analyze)
 
 hlm2b.sim=FEsim(hlm2b,n.sims=200)
 interact=grepl('ue',hlm2b.sim$term)
-plotFEsim(hlm2b.sim[interact,])
+yr = grepl('iwendy',hlm2b.sim$term)
+#plotFEsim(hlm2b.sim[interact,])
+plotFEsim(hlm2b.sim[!yr,])
+
+hlm2bs = data.frame(coef(summary(hlm2b)))
+hlm2bs$effname = row.names(hlm2bs)
+hlm2bs = mutate_at(hlm2bs,vars(Estimate,Std..Error,t.value),funs(rnd(.)))
+
+sink(paste0(outdir,'env-eff.md'))
+  kable(hlm2bs)
+sink()
 
 #print(summary(hlm2b))
 
