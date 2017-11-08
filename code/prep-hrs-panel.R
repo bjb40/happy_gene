@@ -21,11 +21,22 @@ hrsdir = "H:/Academic Projects/Data Files/HRS/"
 #Creat subset of HRS data for analysis
 #@@@@@@@@@
 
-rawzip = paste0(hrsdir,"randnstata.zip")
-zipdat = unzip(rawzip,"rndhrs_n.dta")
+rawzip = paste0(hrsdir,"randpstata.zip")
+zipdat = unzip(rawzip,"randpstata/rndhrs_p.dta")
 
 library(foreign)
 rawhrs = read.dta(zipdat, convert.factors = FALSE)
+
+#load and merge gene data
+library(haven); library(reshape2); library(dplyr)
+pgsdat = read_dta('H:/Academic Projects/Data Files/HRS/PGENSCORE/PGENSCOREA_R.dta')
+colnames(pgsdat) = tolower(colnames(pgsdat))
+pgsdat$rahhidpn = paste0(pgsdat$hhid,pgsdat$pn)
+
+rawhrs = merge(rawhrs,pgsdat,by='rahhidpn',all.x=TRUE) 
+
+rawhrs$has_pgs = ifelse(!is.na(rawhrs$version),TRUE,FALSE)
+
 
 #lmited to wave 6 (2002) to wave 11 (2012) 
 waves = 6:11
@@ -40,7 +51,7 @@ makeseq = function(pre,w,post){
 #select variables to subset
 vars = c(
   #independant id variable
-  'hhidpn',
+  'hhidpn','rahhidpn',
   #key dependant (growth) variable
   makeseq('r',waves,'cesd'),
   makeseq('r',waves,'drinkn'),
@@ -61,7 +72,7 @@ vars = c(
   #@@time-invariant variables associated with depressive symptoms
   
   #gender 1=male, 2=female
-  'ragender',
+  'ragender','has_pgs',
   
   #education
   'raedyrs',
@@ -112,7 +123,7 @@ subdat = subset(rawhrs,select=c(vars))
 
 #remove raw data from memory and working directory
 rm(rawhrs)
-file.remove("rndhrs_n.dta")
+unlink("randpstata",recursive=TRUE)
 
 #save raw subset in "output" directory
 write.csv(subdat, file=paste0(outdir,'private~/subhrs.csv'))
@@ -135,9 +146,9 @@ sink()
 
 #summarize variables and initialize clean dataset
 #fixed
-fvars = c('hhidpn','rabyear','ragender','raedyrs','raracem')
+fvars = c('hhidpn','rahhidpn','rabyear','ragender','raedyrs','raracem','has_pgs')
 #respondent change variables
-rcvars = c('cendiv','cesd','mstat','lbrf','work62','work65',
+rcvars = c('cendiv','cesd','mstat','drinkn','lbrf','work62','work65',
            'rplnyr','rplnya','sayret','retyr','retmon',
            'iwendm','iwendy','wtresp')
 
@@ -355,7 +366,7 @@ sink()
 #@@@@@@@@@@@@@@@@@@@@@
 
 #delete cases with no CESD info and delete original variables in favor of renamed variables
-cleandat=longdat[is.na(longdat$cesd)==F,!(names(longdat) %in% c('ragender','raracem','mstat','lbrf'))]
+cleandat=longdat[is.na(longdat$cesd)==F,!(names(longdat) %in% c('ragender','mstat','lbrf'))]
 
 #print overview of deletions
 sink(paste(outdir,'cleanhrs-overview.txt',sep=''))
@@ -389,7 +400,7 @@ save(cleandat,file=paste0(outdir,'private~/cleandat.RData'))
 #@@@@@@@@@@@@@@@@@@@@@
 
 #attach(cleandat)
-agg=aggregate(cleandat,by=list(cleandat$wave), FUN=function(x) 
+agg=aggregate(cleandat%>%dplyr::select(-hhidpn,-rahhidpn),by=list(cleandat$wave), FUN=function(x) 
   c(mn=mean(x, na.rm=T),sdev=sd(x, na.rm=T),min=min(x,na.rm=T),max=max(x,na.rm=T),n=length(x),nmiss=sum(is.na(x)) ) )
 #detach(cleandat)
 
