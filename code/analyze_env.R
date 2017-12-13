@@ -1,3 +1,4 @@
+#this file analyzes
 ##environment test
 
 rm(list=ls())
@@ -5,6 +6,7 @@ rm(list=ls())
 source('code/config~.R',echo=TRUE)
 
 #load cleandat
+#this data was cleaned using pre-hrs-panel.R
 cleandat.f = paste0(outdir,'private~/cleandat.RData')
 if(file.exists(cleandat.f)){
   load(cleandat.f)
@@ -13,8 +15,8 @@ if(file.exists(cleandat.f)){
   source('code/prep-hrs-panel.R',echo=TRUE)
 }
 
-library(ggplot2);  library(reshape2);
-library(lme4); library(plm); library(merTools); library(dplyr)
+library(ggplot2);  library(reshape2); library(haven); library(scales)
+library(lme4); library(plm); library(merTools); library(knitr); library(dplyr)
 
 
 analyze = cleandat 
@@ -48,7 +50,7 @@ print(summary(cx.unemp))
 
 
 ####individual f/e
-form = cesd~pm_uer+marr+age+factor(iwendy)+atota+itot
+form = cesd~pm_uer+marr+age+atota+itot
 
 #not sure why 2012 isn't getting factored 
 plm1 = plm(form, 
@@ -337,6 +339,137 @@ ggplot(mlts,aes(x=value)) +
 
 ggsave(paste0(outdir,'misc_hist.pdf'))
 
+#######
+#descriptives
+
+#id pgs quartiles (for plotting bivariate relationships)
+analyze$pgs.quart = cut(analyze$pgs.swb,quantile(analyze$pgs.swb,
+                                                 probs=seq(0,1,by=0.25),
+                                                 na.rm=TRUE))
+
+analyze$pgs.quart5 = cut(analyze$pgs.swb,quantile(analyze$pgs.swb,
+                                                 probs=seq(0,1,by=0.2),
+                                                 na.rm=TRUE))
+
+analyze$md_uer.quart10 = cut(analyze$md_uer,quantile(analyze$md_uer,
+                                                   probs=seq(0,1,by=0.1),
+                                                   na.rm=TRUE))
+
+analyze$md_uer.quart = cut(analyze$md_uer,quantile(analyze$md_uer,
+                                                   probs=seq(0,1,by=0.25),
+                                                   na.rm=TRUE))
+analyze$uer_up = analyze$md_uer>0
+
+#mean cesd by pgs quantile
+ianalyze = analyze %>% 
+  group_by(hhidpn) %>%
+  summarize(cesd = mean(cesd,na.rm=TRUE),
+            pgs.quart5 = mean(as.numeric(pgs.quart5),na.rm=TRUE)) %>%
+  ungroup
+
+ianalyze = ianalyze %>%
+  group_by(pgs.quart5) %>%
+  summarize(n=sum(!is.na(cesd)),
+            prop_cesd = sum(cesd>1)/n,
+            sd_prop = sqrt((prop_cesd*(1-prop_cesd))/n)) %>%
+  ungroup %>%
+  filter(!is.na(pgs.quart5))
+  
+#cesd change from mean by pgs quantile
+imeans = ggplot(ianalyze,aes(x=pgs.quart5,y=prop_cesd)) +
+  geom_bar(stat='identity',fill='grey') +
+  geom_errorbar(aes(ymax=prop_cesd + 1.34*sd_prop,ymin=prop_cesd - 1.34*sd_prop),width=0) +
+  theme_classic() + xlab('PGS Quintile') + ylab('Proportion with Individual Mean CESD > 1')
+
+print(imeans)
+ggsave(paste0(draftimg,'indiv_pgs.pdf'))
+
+#####
+#observation level
+subanalyze = analyze %>%
+  group_by(pgs.quart5,uer_up) %>%
+  summarize(mean_cesd = mean(md_cesd,na.rm=TRUE),
+            prop_cesd = mean(md_cesd>0,na.rm=TRUE),
+            n = sum(!is.na(md_cesd)),
+            sd_cesd = sd(md_cesd,na.rm=TRUE),
+            sd_prop = sqrt((prop_cesd*(1-prop_cesd))/sum(!is.na(md_cesd))))
+
+subanalyze = subanalyze[complete.cases(subanalyze),]
+
+deltas=subanalyze %>% 
+  group_by(pgs.quart5) %>%
+  summarize(max=max(prop_cesd),
+            min=min(prop_cesd),
+            ps=sum(prop_cesd*n)/sum(n),
+            pd = diff(prop_cesd),
+            se=sqrt(ps*(1-ps)/sum(n)),
+            z=pd/se,
+            pval=(1-pnorm(abs(z)))*2,
+            star=sig(pval))
+
+deltaviz = ggplot(subanalyze) +
+  geom_line(aes(x=pgs.quart5,y=prop_cesd,group=uer_up),alpha=0.2) +
+  geom_point(aes(x=pgs.quart5,y=prop_cesd,group=uer_up,shape=uer_up),size=2) +
+  geom_text(data=deltas,aes(x=pgs.quart5,y=max-pd/2,label=star)) +
+  theme_classic() +
+  ylab('Proportion with Increasing CESD') + xlab('PGS Quintile') +
+  scale_x_discrete(labels=paste0('Q',c(1:5))) +
+  scale_shape_discrete(labels=c('Stable or Declining U/E','Increasing U/E')) +
+  guides(shape=guide_legend(title=NULL)) +
+  theme(legend.position='bottom')
+  
+print(deltaviz)
+ggsave(paste0(draftimg,'prop_deltas.pdf'))
+
+#ggsave
+
+######
+#fe tests
+
+plm(cesd~age + (ret + unemp)*pm_uer + marr ,
+    index='hhidpn',model='within',data=analyze)
+
+plm.e = plm(cesd~age + (ret + unemp)*pm_uer + marr ,
+            index='hhidpn',model='within',data=analyze)
+
+res.e = as.data.frame(coef(summary(plm.e)))
+res.e$effname = factor(row.names(res.e))
+levels(res.e$effname) = c('Age','Married','U/E','Retired','RetiredxUE','Unemp.','Unemp.xU/E')
+colnames(res.e) = c('est','se','tv','pval','effname')
+
+FE.env = ggplot(res.e,aes(y=est,x=effname,alpha=pval<0.05)) + 
+  geom_point(size=2) +
+  geom_abline(slope=0,intercept=0) +
+  geom_errorbar(aes(ymax=est+1.96*se,ymin=est-1.96*se),width=0,size=1.25) +
+  theme_classic() + 
+  scale_x_discrete(limits=rev(levels(res.e$effname))) +
+  coord_flip() + ylab('') + xlab('')
+
+print(FE.env)
+ggsave(paste0(draftimg,'fe.pdf'))
+
+plm.gxe = plm(cesd~age + (ret + unemp)*pm_uer + marr +
+                (pm_uer + (ret+unemp)*pm_uer):pgs.swb,
+           index='hhidpn',model='within',data=analyze)
+
+res.gxe = as.data.frame(coef(summary(plm.gxe)))
+res.gxe$effname = factor(row.names(res.gxe))
+levels(res.gxe$effname) = c('Age','Married','U/E','Retired','RetiredxUE','Unemp.','Unemp.xU/E',
+                            'U/ExPGS','RetxPGS','Unemp.xPGS','RetxPGSxU/E','UnempxPGSxU/E')
+colnames(res.gxe) = c('est','se','tv','pval','effname')
+
+FE.gxenv = ggplot(res.gxe,aes(y=est,x=effname,alpha=pval<0.05)) + 
+  geom_point(size=2) +
+  geom_abline(slope=0,intercept=0) +
+  geom_errorbar(aes(ymax=est+1.96*se,ymin=est-1.96*se),width=0,size=1.25) +
+  theme_classic() + 
+  scale_x_discrete(limits=rev(levels(res.gxe$effname))) +
+  coord_flip() + ylab('') + xlab('')
+
+print(FE.gxenv)
+
+ggsave(paste0(draftimg,'FExgene.pdf'))
+
 ######
 #regression analysis
 env.mod = lmer(cesd~iuer + md_uer +
@@ -440,6 +573,14 @@ print(summary(hlm.gxed))
 hlm.sim = FEsim(hlm.gxed,n.sims=200)
 yrs=grepl('factor',hlm.sim$term)
 plotFEsim(hlm.sim[!yrs,])
+
+
+###
+#survival analysis
+
+library(survival)
+
+
 
 
 #p1=plm(cesd~pm_uer+marr+age,data=analyze,index='hhidpn',model='within')
