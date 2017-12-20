@@ -18,8 +18,26 @@ if(file.exists(cleandat.f)){
 library(ggplot2);  library(reshape2); library(haven); library(scales)
 library(lme4); library(plm); library(merTools); library(knitr); library(dplyr)
 
+#load plotting theme for b-w presentation style--
+source('H:/projects/proposal/r_study/code/themes.R',echo=TRUE)
 
-analyze = cleandat 
+#NOTES: can work up descriptively as necessary
+#2002 + significant gxe interaction; 1993 - 2000 not much...
+#>=2006 something different; extremes usually have difference
+#<2006 opposite relationshipo with and u/e rate
+#limited to recession 2006 to 2010, only low-end spectrum is okay
+#prior to recession has big differences across the whole spectrum
+#no effect outside of recession, except for unemployment (but marginal...)
+
+analyze = cleandat %>% 
+  mutate(recession=ifelse(iwendy %in% c(2001,2007,2008,2009),1,0),
+         lnwlth = log(atota + abs(min(atota)) + 1),
+         lnincome = log(itot + abs(min(itot))+ 1),
+         negwlth = ifelse(aotota<0,1,0)) #%>%
+  #filter(iwendy<=2006)
+  #filter(iwendy>=2006)
+  #filter(iwendy >= 2006 & iwendy < 2010)
+  #filter(iwendy>2002)
 
 ######
 #cross-sections hows efffect (positive) only with retirees
@@ -299,6 +317,12 @@ pgsdat=pgsdat %>% filter(black==0)
 pgsdat$pgs.symp = adjpgs('pgs_depsymp_ssgac16',pcs,pgsdat)
 pgsdat$pgs.mdd = adjpgs('pgs_mdd_pgc13',pcs,pgsdat)
 pgsdat$pgs.swb = adjpgs('pgs_pgs_wellb_ssgac16',pcs,pgsdat)
+pgsdat$pgs.neu = adjpgs('pgs_pgs_neuro_ssgac16',pcs,pgsdat)
+
+######
+#pgsdat$pgs.swb1 = pgsdat$pgs.swb
+#pgsdat$pgs.swb = pgsdat$pgs.symp ### same analysis but with depressive symptoms...
+
 
 analyze = merge(analyze,pgsdat,by='rahhidpn',all.x=TRUE,all.y=FALSE)
 
@@ -311,10 +335,17 @@ analyze=analyze %>% filter(!is.na(analyze$version) &
                              analyze$raracem==1)
 
 
+View(analyze %>% 
+       group_by(iwendy) %>%
+       summarize(bcohort=mean(rabyear,na.rm=TRUE),
+                 rexp = mean(r_cohort,na.rm=TRUE),
+                 rinten = mean(r_intens,na.rm=TRUE),
+                 age = mean(age,na.rm=TRUE)))
+
 ######
 #some plots
 
-ggplot(analyze,aes(x=iwendy,y=pm_uer)) +
+uetrend = ggplot(analyze,aes(x=iwendy,y=pm_uer)) +
   geom_line(stat='summary',fun.y='mean',size=2) +
   geom_point(aes(x=(iwendy+iwendm/12)),alpha=0.01) +
   theme_classic() +
@@ -322,7 +353,25 @@ ggplot(analyze,aes(x=iwendy,y=pm_uer)) +
        caption='U/E from the month prior to interview.') +
   xlab('') + ylab('Regional Unemployment Rate.')
 
+print(uetrend)
+
 ggsave(paste0(outdir,'uetrend.pdf'))
+
+
+#####
+#reproduce plot for presentation
+ggplot(analyze,aes(x=iwendy,y=pm_uer)) +
+  geom_line(stat='summary',fun.y='mean',size=2,color='white') +
+  geom_point(aes(x=(iwendy+iwendm/12)),color='grey',alpha=0.1) +
+  theme_present() +
+  labs(caption='U/E from the month prior to interview.') +
+  xlab('') + ylab('Regional Unemployment Rate.')
+
+ggsave(paste0(draftimg,'uetrend.png'),
+       bg='transparent',
+       height=5.5,width=12)
+
+#CESD trends (very little)
 
 ggplot(analyze,aes(x=iwendy,y=cesd)) +
   geom_line(stat='summary',fun.y='mean',size=2) +
@@ -387,7 +436,7 @@ ggsave(paste0(draftimg,'indiv_pgs.pdf'))
 #####
 #observation level
 subanalyze = analyze %>%
-  group_by(pgs.quart5,uer_up) %>%
+  group_by(pgs.quart5,uer_up,recession) %>%
   summarize(mean_cesd = mean(md_cesd,na.rm=TRUE),
             prop_cesd = mean(md_cesd>0,na.rm=TRUE),
             n = sum(!is.na(md_cesd)),
@@ -401,7 +450,7 @@ deltas=subanalyze %>%
   summarize(max=max(prop_cesd),
             min=min(prop_cesd),
             ps=sum(prop_cesd*n)/sum(n),
-            pd = diff(prop_cesd),
+            pd = abs(diff(prop_cesd)),
             se=sqrt(ps*(1-ps)/sum(n)),
             z=pd/se,
             pval=(1-pnorm(abs(z)))*2,
@@ -421,7 +470,22 @@ deltaviz = ggplot(subanalyze) +
 print(deltaviz)
 ggsave(paste0(draftimg,'prop_deltas.pdf'))
 
-#ggsave
+#rearrange deltaviz for presentation
+
+ggplot(subanalyze) +
+  geom_line(aes(x=pgs.quart5,y=prop_cesd,group=uer_up),size=0.75,color='grey',alpha=0.5,lty=2) +
+  geom_point(aes(x=pgs.quart5,y=prop_cesd,group=uer_up,shape=uer_up),size=5,color='white') +
+  geom_text(data=deltas,aes(x=pgs.quart5,y=max-pd/2,label=star),size=7,color='white') +
+  theme_present() +
+  ylab('Proportion with Increasing CESD') + xlab('PGS Quintile') +
+  scale_x_discrete(labels=paste0('Q',c(1:5))) +
+  scale_shape_discrete(labels=c('Stable or Declining U/E','Increasing U/E')) +
+  guides(shape=guide_legend(title=NULL)) +
+  theme(legend.position='bottom')
+
+ggsave(paste0(draftimg,'deltaviz.png'),
+       bg='transparent',
+       height=5.5,width=12)
 
 ######
 #fe tests
@@ -431,6 +495,19 @@ plm(cesd~age + (ret + unemp)*pm_uer + marr ,
 
 plm.e = plm(cesd~age + (ret + unemp)*pm_uer + marr ,
             index='hhidpn',model='within',data=analyze)
+
+plm.a = plm(cesd~pm_uer + age + ret + unemp + marr + atota + itot,
+            index='hhidpn',model='within',data=analyze)
+summary(plm.a)
+
+#plm.r = plm(cesd~pm_uer + recession + ret + unemp + marr + atota + itot,
+#            index='hhidpn',model='within',data=analyze)
+#summary(plm.r)
+
+#plm.rxg = plm(cesd~pgs.swb*(pm_uer + recession) + ret + unemp  + marr + atota + itot,
+#            index='hhidpn',model='within',data=analyze)
+#summary(plm.rxg)
+
 
 res.e = as.data.frame(coef(summary(plm.e)))
 res.e$effname = factor(row.names(res.e))
@@ -448,14 +525,30 @@ FE.env = ggplot(res.e,aes(y=est,x=effname,alpha=pval<0.05)) +
 print(FE.env)
 ggsave(paste0(draftimg,'fe.pdf'))
 
+###men and women are same drinking and depression! BUT mdd is different
+###drinking is more sensitive to unemp, and males with higher MDD drink more
+#should change to include spouse's employment status... for drinking
+
+#can interperet pgs.swb as an **adaptation** gene... 
+#(if you include iwendy in the fixed effect, and if you include iuer in random effects
+#UNLESS it's mortality selectivity...
+
+#note that the PGS interaction effect changes over time, i.e. disappears closer to recession
+#taking out iwendy and regressing 2002+ (after .com bust) shows more sensitivity of high pgs.swb
+#to unemployment rate
+
 plm.gxe = plm(cesd~age + (ret + unemp)*pm_uer + marr +
                 (pm_uer + (ret+unemp)*pm_uer):pgs.swb,
            index='hhidpn',model='within',data=analyze)
 
+###
+
 res.gxe = as.data.frame(coef(summary(plm.gxe)))
-res.gxe$effname = factor(row.names(res.gxe))
-levels(res.gxe$effname) = c('Age','Married','U/E','Retired','RetiredxUE','Unemp.','Unemp.xU/E',
-                            'U/ExPGS','RetxPGS','Unemp.xPGS','RetxPGSxU/E','UnempxPGSxU/E')
+res.gxe$effname = c('Age','Retired','Unemployed',
+                    'U/E','Married','U/ExRet',
+                    'U/ExUnemp','U/ExPGS','RetxPGS',
+                    'UnepxPGS','U/ExRetxPGS','U/ExUnempxPGS')
+res.gxe$effname = factor(res.gxe$effname) 
 colnames(res.gxe) = c('est','se','tv','pval','effname')
 
 FE.gxenv = ggplot(res.gxe,aes(y=est,x=effname,alpha=pval<0.05)) + 
@@ -470,6 +563,23 @@ print(FE.gxenv)
 
 ggsave(paste0(draftimg,'FExgene.pdf'))
 
+#####
+#plot for presentation
+
+ggplot(res.gxe[grep('U/E',res.gxe$effname),],aes(y=est,x=effname,color=pval<0.05)) + 
+  geom_point(size=2) +
+  geom_abline(slope=0,intercept=0,color='white') +
+  geom_errorbar(aes(ymax=est+1.96*se,ymin=est-1.96*se),width=0,size=1.25) +
+  theme_present() + 
+  scale_color_brewer('p<0.05',palette='Blues',direction=-1) +
+  scale_x_discrete(limits=
+                     rev(levels(res.gxe$effname)[grep('U/E',levels(res.gxe$effname))])) +
+  coord_flip() + ylab('') + xlab('')
+
+ggsave(paste0(draftimg,'FExgene.png'),
+       bg='transparent',
+       height=5.5,width=12)
+
 ######
 #regression analysis
 env.mod = lmer(cesd~iuer + md_uer +
@@ -479,6 +589,8 @@ env.mod = lmer(cesd~iuer + md_uer +
        md_atota + md_itot +
        (1|hhidpn),
      data=analyze )
+
+
 
 
 print(summary(env.mod))
@@ -536,8 +648,20 @@ hlm.sim = FEsim(hlm.env,n.sims=200)
 yrs=grepl('factor',hlm.sim$term)
 plotFEsim(hlm.sim[!yrs,])
 
-hlm.gxe = lmer(cesd~(iuer + md_uer+r_cohort+r_intens)*pgs.symp+
+
+hlm.enva = lmer(md_cesd~iuer + r_cohort + r_intens +
+                 md_uer*(unemp+ret) +
                  factor(iwendy) + male + age + 
+                 I(age^2) + marr + iatota + iitot + 
+                 md_atota + md_itot +
+                 (1|hhidpn),
+               data=analyze %>% filter(r_intens<3))
+
+print(summary(hlm.enva))
+
+
+hlm.gxe = lmer(cesd~(iuer + md_uer+r_cohort+r_intens)*pgs.swb+
+                male + age + 
                  I(age^2) + marr + iatota + iitot + 
                  md_atota + md_itot +
                  (1|hhidpn),
@@ -562,25 +686,44 @@ hlm.sim = FEsim(hlm.envd,n.sims=200)
 yrs=grepl('factor',hlm.sim$term)
 plotFEsim(hlm.sim[!yrs,])
 
-hlm.gxed = lmer(cesd~(iuer + md_uer + r_cohort + r_intens)*pgs.swb +
-                  factor(iwendy) + male + age + 
+#note that NEU has most effect on rcohort/rintens ...
+
+hlm.gxed = lmer(cesd~(iuer + md_uer + r_cohort + r_intens + recession)*pgs.swb +
+                  male + age + 
                    marr + iatota + iitot + 
-                  md_atota + md_itot +
+                  md_atota + md_itot + md_unemp + md_ret + iunemp + iret +
                   (1|hhidpn),
                 data=analyze %>% filter(r_intens<3))
 
 print(summary(hlm.gxed))
 hlm.sim = FEsim(hlm.gxed,n.sims=200)
 yrs=grepl('factor',hlm.sim$term)
-plotFEsim(hlm.sim[!yrs,])
+plt = plotFEsim(hlm.sim[!yrs,])
+print(plt)
 
+####
+#pgs plot for presentation
+
+ggplot(analyze,aes(x=pgs.swb)) + 
+  geom_histogram(fill='white') +
+  theme_present() + 
+  xlab('Risk Score') + 
+  ylab('Count')
+
+ggsave(paste0(draftimg,'pgs-swb.png'),
+       bg='transparent',
+       height=5,width=5)
+
+
+#######
+#model from r_study
 
 ###
 #survival analysis
 
 library(survival)
 
-
+#load cleandat and use iwstat to identify wave of death...
 
 
 #p1=plm(cesd~pm_uer+marr+age,data=analyze,index='hhidpn',model='within')

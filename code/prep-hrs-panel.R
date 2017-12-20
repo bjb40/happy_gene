@@ -39,8 +39,8 @@ rawhrs$has_pgs = ifelse(!is.na(rawhrs$version),TRUE,FALSE)
 
 
 #lmited to wave 6 (2002) to wave 11 (2012) 
-waves = 6:11
-years = c(rep(NA,5),2002,2004,2006,2008,2010,2012)
+waves = 2:12
+years = c(NA,1994,1996,1998,2000,2002,2004,2006,2008,2010,2012,2014)
 
 #this function builds character arrays based on
 #rand data and the waves selected
@@ -59,6 +59,9 @@ vars = c(
   #interview date month and year
   makeseq('r',waves,'iwendm'),
   makeseq('r',waves,'iwendy'),
+  
+  #interview status = 5 = died this wave; 6 died previous wave
+  makeseq('r',waves,'iwstat'),
   
   #alt growth variable percentages (leaving retirement,suriviving,continue working)
   #self reported probability of working after 62 and 65 respectivley on 10 point scale (multiplied by 10)
@@ -118,6 +121,14 @@ vars = c(
   makeseq('r',waves,'wtresp')
 )
 
+#check for missing variables
+mvars = vars[!vars %in% colnames(rawhrs)]
+cat('\n\nWarning: Missing variables...',mvars,'\n\n')
+
+###only 2 missing from 2002
+rawhrs$r2drinkn=NA
+rawhrs$r2rplnya=NA
+
 #subset dataframe
 subdat = subset(rawhrs,select=c(vars))
 
@@ -150,7 +161,7 @@ fvars = c('hhidpn','rahhidpn','rabyear','ragender','raedyrs','raracem','has_pgs'
 #respondent change variables
 rcvars = c('cendiv','cesd','mstat','drinkn','lbrf','work62','work65',
            'rplnyr','rplnya','sayret','retyr','retmon',
-           'iwendm','iwendy','wtresp')
+           'iwendm','iwendy','wtresp','iwstat')
 
 #household change variables
 hcvars = c('itot','atota')
@@ -204,7 +215,7 @@ longdat$marr=NA
 longdat$marr[longdat$mstat %in% c(1:2)] = 1
 longdat$marr[longdat$mstat %in% c(3:8)] = 0
 longdat$ret = NA
-longdat$ret[longdat$lbrf == 4:5] = 1 #includes "partly retired, i.e. ret with pt job
+longdat$ret[longdat$lbrf %in% c(4:5)] = 1 #includes "partly retired, i.e. ret with pt job
 longdat$ret[longdat$lbrf %in% c(1:3,6:7)] = 0
 longdat$emp = NA
 longdat$emp[longdat$lbrf %in% c(3:7)] = 0 
@@ -252,10 +263,11 @@ longdat$pm_uer = NA
 
 for(i in 1:nrow(longdat)){
   
-  if(longdat[i,'iwendy'] > 2001 & longdat[i,'iwendy'] < 2013 
-      & is.na(longdat[i,'iwendy'])==F
-      & is.na(longdat[i,'iwendm'])==F
-      & is.na(longdat[i,'cendiv'])==F
+  if(longdat[i,'iwendy'] >= min(years,na.rm=TRUE) & 
+     longdat[i,'iwendy'] <=max(years,na.rm=TRUE) & 
+      is.na(longdat[i,'iwendy'])==F & 
+      is.na(longdat[i,'iwendm'])==F &
+      is.na(longdat[i,'cendiv'])==F
     ) {
 
     yr = longdat[i,'iwendy']

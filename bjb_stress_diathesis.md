@@ -31,26 +31,41 @@ This study tests the genetic vulnerability or resistance to depressive events in
 
 #Background
 
-The stress process model has been used to explain the development of all sorts of adverse health events--including continuous measures of psychological distress and depressive symptoms which do not reach clinically diagnosable levels [@gayman_multiple_2013]. In its most basic formulation, the stress process model suggests that organisms respond negatively to negative stimuli from the environment [@pearlin_stress_1981]. Heterogeneity in negative responses depend on mechanisms that can either buffer or exacerbate the stress response. Studies have found that economic conditions related to "job churn" generate poor health outcomes [@strully_job_2009]. Importantly, poor economic conditions associated with poor economic conditions, like rising unemployment rates, are associated with large-scale changes in mental health and psychological well-being [@lam_is_2014].
+The stress process model has been used to explain the development of all sorts of adverse health events--including continuous measures of psychological distress and depressive symptoms which do not reach clinically diagnosable levels [@gayman_multiple_2013]. In its most basic formulation, the stress process model suggests that organisms respond negatively to negative stimuli from the environment [@pearlin_stress_1981]. Heterogeneity in negative responses depend on mechanisms that can either buffer or exacerbate the stress response. Studies have found that economic conditions related to "job churn" generate poor health outcomes [@strully_job_2009]. Importantly, poor economic conditions associated with poor economic conditions, like rising unemployment rates, are associated with large-scale changes in mental health and psychological well-being [@lam_is_2014]. This generally operates through increasing job uncertainty. In addition to these general patterns, there has also been a secular increase in job uncertainty beginning in the late 1970s and accelerating after the recessions of the 2000s [@kalleberg_good_2011].
 
-This study asks whether there is variation in the response to these generalized stressful conditions is associated with differences in genetic risk scores. The theory of genetic heterogeneity in vulnerability to stress response is known as the  diathesis-stress model [@domingue_genetic_2016]. While controversial, studies have found evidence of genetic vulnerability to stress, such as the death of a spouse [@domingue_genetic_2016]. Reports of psychological distress represent an exceedingly complex phenotype [@conley_promise_2009], and there are multiple genetic markers we can possibly use. Like Domingue, et al. we use positive subjective well-being (*i.e.* happiness) as our genetic measure.
+This study asks whether there is variation in the response to these generalized stressful conditions is associated with differences in genetic risk scores. The theory of genetic heterogeneity in vulnerability to stress response is known as the  diathesis-stress model [@domingue_genetic_2016]. Studies have found evidence of genetic vulnerability to stress, such as the death of a spouse [@domingue_genetic_2016]. Reports of psychological distress represent an exceedingly complex phenotype [@conley_promise_2009], and there are multiple genetic markers we can possibly use. Like Domingue, et al. we use positive subjective well-being (*i.e.* happiness) as our genetic measure.
 
-The outcome we use is depressive symptoms, commonly used to test exposure to stress, and the environmental exposure is changes in the unemployment rate between 2002 and 2012 (inclusive of the Great Recession).
+We present two sets of hypotheses below. One set regards direct economic impacts, and the other set is about indirect economic impacts:
 
-Hypothesis 1:
+Hypothesis 1: Low polygenic risk scores for subjective well-being are associated with vulnerability to direct economic impacts, like unemployment. 
 
-Hypothesis 2: 
+Hypothesis 2a: Low polygenic risk scores for subjective well-being are associated higher vulnerability to indirect economic impacts, like changes in the regional unemployment rate. 
 
-There is  evidence that positive subjective well-being is also related to longevity [@diener_happy_2011]. accordingly, we also test whether PGS for high subjective well-being is related to survival.
-
-Hypothesis 3: ```survival: if these models pan out; I think we can include either way```
+Hypothesis 2b: Low polygenic risk scores for subjective well-being are associated  higher vulnerability to indirect economic impacts, like unemployment. 
 
 #Data
 
+To examine these hypotheses, we use the Health and Retirment Study (HRS). The HRS is a probability-based sample of non-institutionalized adults 50 years and older. The HRS started in 1992 and is conducted every two years. As older cohorts age, the HRS refreshes the panel with samples of younger cohorts. In 2006 and 2008, the HRS collected genomic data from respondents. Because some key measures are different in the first wave and successive waves, we use waves 2-12 (1994-2014) which span a twenty year period. We also limit our analysis to non-hispanic whites. 
+
+##Outcome: Depressive Symptoms
+
+We measure *depressive symptoms* using the Center for Epidemeological Studies Depression 8 item (CESD-8) scale. This scale is a sum of the following dichotomous measures: felt depressed; felt everything was an effort; sleep was restless; could not get going; felt lonely; enjoyed life (reverse coded); felt sad; was happy (reverse coded). 
+
+##Direct Economic Impacts
+
+We measure direct economic impacts by changes in employement status. We measure employment status using a dummy variable series for employed (reference), unemployed, and retired. 
+
+##Indirect Economic Impacts
+
+As outlined in the hypotheses above, we operationalize indirect measures of economic impacts in two ways. First, we measure by survey year. In addition, we conduct analyses over the period before the dot-com bust (1994-2000 and earlier) and after the dot-com bust (2002-2014). We also include a measure of the regional unemployment rate in the month and year prior to the interview. We take this figure from the Bureau of Labor Statistics regional unemployment rate measures.
 
 ##Polygenic Risk Scores
 
 We follow the procedure outlined in Dominigue, et al. [-@domingue_genetic_2016] to calculate our polygenic risk scores. First, we match SNPs in the HRS to SNPS in the GWAS conducted by Okbay et al. [-@okbay_genetic_2016] available through the Social Science Genetic Association Consortium. Second, we sum the weighted estimates of well-being associated alleles from the GWAS to calculate a polygenic score. Third, we adjust the residulized PGS using 10 principal components and PLINK (command: pca), and normalize the PGS residual distribution, which we use as the measure of genetic predisposition to well-being.
+
+##Controls
+
+We include a handfull of time-varying controls which have been shown to associate with depressive symptoms. These are age marital status, household income and household wealth. Since we employ fixed effects models as described below, we do not include time-invariant characteristics such as gender, although we do include gender in our summary of descriptive statistics.
 
 #Analytic Strategy
 
