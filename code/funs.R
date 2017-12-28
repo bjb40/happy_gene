@@ -1,5 +1,16 @@
 #functions and objects
 
+#@@@@@@@@@@@
+#requirements and misc
+#@@@@@@@@@@@
+
+library(ggplot2);  library(reshape2); library(haven); library(scales)
+library(lme4); library(plm); library(merTools); library(knitr); library(dplyr)
+
+#load plotting theme for b-w presentation style--
+source('H:/projects/proposal/r_study/code/themes.R',echo=TRUE)
+
+
 #@@@@@@@@@@@@@@@@@@@@@
 #Functions/objects 
 #@@@@@@@@@@@@@@@@@@@@@
@@ -27,10 +38,12 @@ sig = function(pv){
   #
   # Returns:
   #   a string with stars for values * <.05 **<.01 *** < .001
-  s=' '
-  if(length(pv)>0){
-    if(pv<.001){s='***'} else if(pv<.01){s='**'} else if (pv<.05){s='*'} else if (pv<.1){s='+'}
-  }
+  s=rep(' ',length(pv))
+  s[pv<.001] = '***'
+  s[pv<.01 & pv>=.001] = '**'
+  s[pv<.05 & pv>=.01] = '*'
+  s[pv<.1 & pv>=.05] = '+'
+  
   return(s)
   
 }

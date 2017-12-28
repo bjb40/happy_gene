@@ -15,11 +15,6 @@ if(file.exists(cleandat.f)){
   source('code/prep-hrs-panel.R',echo=TRUE)
 }
 
-library(ggplot2);  library(reshape2); library(haven); library(scales)
-library(lme4); library(plm); library(merTools); library(knitr); library(dplyr)
-
-#load plotting theme for b-w presentation style--
-source('H:/projects/proposal/r_study/code/themes.R',echo=TRUE)
 
 #NOTES: can work up descriptively as necessary
 #2002 + significant gxe interaction; 1993 - 2000 not much...
@@ -29,46 +24,29 @@ source('H:/projects/proposal/r_study/code/themes.R',echo=TRUE)
 #prior to recession has big differences across the whole spectrum
 #no effect outside of recession, except for unemployment (but marginal...)
 
-analyze = cleandat %>% 
+analyze = cleandat %>% filter(iwstat==1) %>% #limit to in-wave respondents
   mutate(recession=ifelse(iwendy %in% c(2001,2007,2008,2009),1,0),
-         lnwlth = log(atota + abs(min(atota)) + 1),
-         lnincome = log(itot + abs(min(itot))+ 1),
-         negwlth = ifelse(aotota<0,1,0)) #%>%
-  #filter(iwendy<=2006)
-  #filter(iwendy>=2006)
-  #filter(iwendy >= 2006 & iwendy < 2010)
-  #filter(iwendy>2002)
+         lnwlth = log(atota + abs(min(atota,na.rm=TRUE)) + 1),
+         lninc = log(itot + abs(min(itot,na.rm=TRUE))+ 1),
+         negwlth = ifelse(atota<0,1,0)) 
+
 
 ######
 #cross-sections hows efffect (positive) only with retirees
 ######
-#props
 
-colSums(analyze[,c('emp','unemp','ret')], na.rm=TRUE)/nrow(analyze)
+analyze$laborcat = factor(analyze$unemp + analyze$ret*2 + 1,
+                          labels=c('emp','unemp','ret'))
+print(table(analyze[,c('laborcat','unemp','ret')]))
 
-cx.ret = lm(cesd~pm_uer+
-             factor(iwendy)+male+age + 
-             I(age^2) + 
-             marr + atota + itot,dat=analyze %>% filter(ret==1))
+cx = lapply(split(analyze, analyze[,'laborcat']),function(x)
+  lm(cesd~pm_uer+iwendy+male+age+I(age^2)+marr+lnwlth+negwlth+lninc,data=x)
+)
 
-print(summary(cx.ret))
+print(lapply(cx,summary))
 
-cx.emp = lm(cesd~pm_uer+
-             factor(iwendy)+male+age + 
-             I(age^2) +
-             marr + atota + itot,dat=analyze %>% filter(emp==1))
-
-print(summary(cx.emp))
-
-cx.unemp = lm(cesd~pm_uer+
-              factor(iwendy)+male+age + 
-              I(age^2) +
-              marr + atota + itot,dat=analyze %>% filter(unemp==1))
-print(summary(cx.unemp))
-
-
-####individual f/e
-form = cesd~pm_uer+marr+age+atota+itot
+####individual f/e; full dataset + HOUSMAN TEST
+form = cesd~pm_uer+emp+ret+marr+age+lnwlth+negwlth+lninc
 
 #not sure why 2012 isn't getting factored 
 plm1 = plm(form, 
@@ -85,9 +63,6 @@ print(hausman)
 ######
 ######measuring the deltas---small effects
 
-#you do this enough across contexts: make a function....
-
-
 analyze.panel = analyze %>% 
   group_by(hhidpn) %>%
   summarize(idrinkn=mean(drinkn,na.rm=TRUE),
@@ -96,6 +71,9 @@ analyze.panel = analyze %>%
             iret = mean(ret,na.rm=TRUE),
             iunemp = mean(unemp,na.rm=TRUE),
             iatota = mean(atota,na.rm=TRUE),
+            iwlth = mean(lnwlth,na.rm=TRUE),
+            inegwlth= mean(negwlth,na.rm=TRUE),
+            iinc = mean(lninc,na.rm=TRUE),
             iitot = mean(itot, na.rm=TRUE)) %>%
   ungroup
 
@@ -107,127 +85,25 @@ analyze = merge(analyze,analyze.panel,by='hhidpn') %>%
          md_ret = ret - iret,
          md_unemp = unemp - iunemp,
          md_atota = atota - iatota,
-         md_itot = itot - iitot) %>%
+         md_itot = itot - iitot,
+         md_wlth = lnwlth-iwlth,
+         md_negwlth= negwlth - inegwlth,
+         md_inc = lninc - iinc) %>%
   ungroup
 
-
-
-
-#basic
-hlm = lmer(cesd~pm_uer+factor(raracem)+
-       factor(iwendy)+male+age + 
-       I(age^2) + unemp + ret +
-       marr + itot + atota + (1|hhidpn),dat=analyze)
+#Replication of GSS panel model (but using cesd, and log wealth and income)
+#(need to add education!!)
+hlm = lmer(cesd~r_cohort + r_intens +
+             iuer + iret + iunemp + iwlth + inegwlth + iinc +
+             md_uer+md_ret+md_unemp+md_wlth+md_negwlth+md_inc
+           +factor(raracem)+
+       factor(iwendy)+male+age + marr +
+         (1|hhidpn),data=analyze)
 
 print(summary(hlm))
 hlm.sim = FEsim(hlm,n.sims=200)
 yrs=hlm.sim
 plotFEsim(hlm.sim)
-
-#print('Scope of Effect')
-#print(0.0402021*range(analyze$md_uer,na.rm=TRUE))
-
-hlm2 = lmer(cesd~iuer+iret+iunemp +factor(raracem)+
-               md_uer+md_ret+md_unemp +
-               iatota + iitot + 
-               md_atota + md_itot +
-               factor(iwendy) + male + age + 
-               I(age^2) + marr + 
-               (1|hhidpn),
-             data=analyze)
-
-print(summary(hlm2))
-hlm2.sim = FEsim(hlm2,n.sims=200)
-yrs=grepl('factor',hlm2.sim$term)
-plotFEsim(hlm2.sim[!yrs,])
-
-analyze$r_intens.f = as.factor(analyze$r_intens)
-levels(analyze$r_intens.f) = strtrim(levels(analyze$r_intens.f),3)
-
-"
-#recession exposures
-hlm2a = lmer(cesd~r_intens.f*iuer+iret+iunemp + 
-               r_intens.f+md_uer+md_ret+md_unemp + 
-               factor(iwendy) + male + age + 
-               I(age^2) + marr + 
-               (1|hhidpn),
-             data=analyze)
-
-#rcohort baseline benefit; benefit to unemployment (definition in the sample?)
-#people are more sensitive higher average unemployment rates
-#equal to 5 percentage points! (need to separate great depression, though)
-
-hlm2a = lmer(cesd~r_cohort*(iuer+iret+iunemp) +
-               r_cohort*(md_uer+md_ret+md_unemp) +
-               factor(iwendy) + male + age + 
-               I(age^2) + marr + 
-               (1|hhidpn),
-             data=analyze)
-
-#replicates gss model...i think
-hlm2aa= lmer(cesd~r_cohort+r_intens+iuer+iret+iunemp +
-               md_uer+md_ret+md_unemp +
-               factor(iwendy) + male + age + 
-               I(age^2) + marr + 
-               (1|hhidpn),
-             data=analyze)
-
-#generate new data for prediction interval
-mns = dplyr::select(analyze,iuer,iret,iunemp,md_uer,md_ret,md_unemp,iwendy,male,age,marr) %>%
-    summarize_each(funs(mean(.,na.rm=TRUE)))
-
-ndat = data.frame(r_intens=(5:35)/10,
-                  r_cohort=1)
-ndat=rbind(ndat,data.frame(r_intens=0,r_cohort=0))
-
-ndat = cbind(ndat,
-            mns[rep(1,nrow(ndat)),])
-ndat$iwendy=2007
-ndat$hhidpn = unlist(rep(analyze[1,'hhidpn'],nrow(ndat)))
-
-pred=predictInterval(hlm2aa,ndat,
-  which='fixed',n.sims=2000)
-
-pred$r_intens = ndat$r_intens
-
-#intervals are wrong per me and Scott's paper... interested in the delta...
-ggplot(pred,aes(x=r_intens,y=fit)) + 
-  geom_point() +
-  geom_linerange(aes(ymin=lwr,ymax=upr),alpha=0.25) +
-  geom_hline(yintercept=pred$fit[pred$r_intens==0],lty=2)
-
-
-             
-hlm2a.sim = FEsim(hlm2a,n.sims=500)
-rc=grepl('r_',hlm2a.sim$term)
-ue=grepl('uer',hlm2a.sim$term)
-plotFEsim(hlm2a.sim[ue,])
-"
-
-#interactions not significant
-hlm2b = lmer(cesd~iuer*(iret+iunemp) +factor(raracem)+
-              md_uer*(md_ret+md_unemp) +
-              factor(iwendy) + male + age + 
-              I(age^2) + marr + iatota + iitot + 
-               md_atota + md_itot +
-              (1|hhidpn),
-            data=analyze)
-
-hlm2b.sim=FEsim(hlm2b,n.sims=200)
-interact=grepl('ue',hlm2b.sim$term)
-yr = grepl('iwendy',hlm2b.sim$term)
-#plotFEsim(hlm2b.sim[interact,])
-plotFEsim(hlm2b.sim[!yr,])
-
-hlm2bs = data.frame(coef(summary(hlm2b)))
-hlm2bs$effname = row.names(hlm2bs)
-hlm2bs = mutate_at(hlm2bs,vars(Estimate,Std..Error,t.value),funs(rnd(.)))
-
-sink(paste0(outdir,'env-eff.md'))
-  kable(hlm2bs)
-sink()
-
-#print(summary(hlm2b))
 
 ####
 #gene effects
@@ -311,6 +187,7 @@ adjpgs = function(pgs,pc,df){
 
 pcs = colnames(pgsdat)[3:12]
 
+#limit to nonhispanic whites
 pgsdat=pgsdat %>% filter(black==0)
 
 #correlations are close to 1; i.e. .97
@@ -329,21 +206,30 @@ analyze = merge(analyze,pgsdat,by='rahhidpn',all.x=TRUE,all.y=FALSE)
 print(dim(analyze))
 print(table(analyze$has_pgs))
 
-
-####analyze gxe interaction
+#limit to nonhispanic whites
 analyze=analyze %>% filter(!is.na(analyze$version) &
                              analyze$raracem==1)
 
+#####
+#interaciton with pgs 
 
-View(analyze %>% 
-       group_by(iwendy) %>%
-       summarize(bcohort=mean(rabyear,na.rm=TRUE),
-                 rexp = mean(r_cohort,na.rm=TRUE),
-                 rinten = mean(r_intens,na.rm=TRUE),
-                 age = mean(age,na.rm=TRUE)))
+hlm.gxe = lmer(cesd~(r_cohort + r_intens):pgs.swb +
+             (iuer + iret + iunemp + iwlth + inegwlth + iinc):pgs.swb +
+             (md_uer+md_ret+md_unemp+md_wlth+md_negwlth+md_inc):pgs.swb +
+             iwendy+male+age + marr +
+             (1|hhidpn),data=analyze)
+
+print(summary(hlm.gxe))
+hlm.sim = FEsim(hlm.gxe,n.sims=200)
+yrs=hlm.sim
+plotFEsim(hlm.sim)
+
+#######
+#descriptive table
+
 
 ######
-#some plots
+#some descriptive plots
 
 uetrend = ggplot(analyze,aes(x=iwendy,y=pm_uer)) +
   geom_line(stat='summary',fun.y='mean',size=2) +
@@ -389,7 +275,7 @@ ggplot(mlts,aes(x=value)) +
 ggsave(paste0(outdir,'misc_hist.pdf'))
 
 #######
-#descriptives
+#more descriptives
 
 #id pgs quartiles (for plotting bivariate relationships)
 analyze$pgs.quart = cut(analyze$pgs.swb,quantile(analyze$pgs.swb,
@@ -436,7 +322,7 @@ ggsave(paste0(draftimg,'indiv_pgs.pdf'))
 #####
 #observation level
 subanalyze = analyze %>%
-  group_by(pgs.quart5,uer_up,recession) %>%
+  group_by(pgs.quart5,uer_up) %>%
   summarize(mean_cesd = mean(md_cesd,na.rm=TRUE),
             prop_cesd = mean(md_cesd>0,na.rm=TRUE),
             n = sum(!is.na(md_cesd)),
@@ -488,30 +374,16 @@ ggsave(paste0(draftimg,'deltaviz.png'),
        height=5.5,width=12)
 
 ######
-#fe tests
+#ENVIRONMENTAL FIXED EFFECT
 
-plm(cesd~age + (ret + unemp)*pm_uer + marr ,
-    index='hhidpn',model='within',data=analyze)
-
-plm.e = plm(cesd~age + (ret + unemp)*pm_uer + marr ,
+plm.e = plm(cesd~age + iwendy + (ret + unemp)*pm_uer + lnwlth + lninc + negwlth + marr ,
             index='hhidpn',model='within',data=analyze)
-
-plm.a = plm(cesd~pm_uer + age + ret + unemp + marr + atota + itot,
-            index='hhidpn',model='within',data=analyze)
-summary(plm.a)
-
-#plm.r = plm(cesd~pm_uer + recession + ret + unemp + marr + atota + itot,
-#            index='hhidpn',model='within',data=analyze)
-#summary(plm.r)
-
-#plm.rxg = plm(cesd~pgs.swb*(pm_uer + recession) + ret + unemp  + marr + atota + itot,
-#            index='hhidpn',model='within',data=analyze)
-#summary(plm.rxg)
-
 
 res.e = as.data.frame(coef(summary(plm.e)))
 res.e$effname = factor(row.names(res.e))
-levels(res.e$effname) = c('Age','Married','U/E','Retired','RetiredxUE','Unemp.','Unemp.xU/E')
+levels(res.e$effname) = c('Age','Log Inc.','Log Wealth',
+                          'Married','Neg. Wealth','U/E',
+                          'Retired','RetiredxUE','Unemp.','Unemp.xU/E')
 colnames(res.e) = c('est','se','tv','pval','effname')
 
 FE.env = ggplot(res.e,aes(y=est,x=effname,alpha=pval<0.05)) + 
@@ -537,18 +409,18 @@ ggsave(paste0(draftimg,'fe.pdf'))
 #taking out iwendy and regressing 2002+ (after .com bust) shows more sensitivity of high pgs.swb
 #to unemployment rate
 
-plm.gxe = plm(cesd~age + (ret + unemp)*pm_uer + marr +
-                (pm_uer + (ret+unemp)*pm_uer):pgs.swb,
+plm.gxe = plm(cesd~age + (ret + unemp)*pm_uer + marr + iwendy +
+                (ret+unemp)*pm_uer + lninc+lnwlth+negwlth +
+                (pm_uer + (ret+unemp)*pm_uer + iwendy):pgs.swb,
            index='hhidpn',model='within',data=analyze)
 
 ###
 
 res.gxe = as.data.frame(coef(summary(plm.gxe)))
-res.gxe$effname = c('Age','Retired','Unemployed',
-                    'U/E','Married','U/ExRet',
-                    'U/ExUnemp','U/ExPGS','RetxPGS',
-                    'UnepxPGS','U/ExRetxPGS','U/ExUnempxPGS')
-res.gxe$effname = factor(res.gxe$effname) 
+res.gxe$effname = factor(row.names(res.gxe))
+#levels(res.gxe$effname) = c('Age','Log Inc.','Log Wealth',
+#                          'Married','Neg. Wealth','U/E',
+#                          'Retired','RetiredxUE','Unemp.','Unemp.xU/E')
 colnames(res.gxe) = c('est','se','tv','pval','effname')
 
 FE.gxenv = ggplot(res.gxe,aes(y=est,x=effname,alpha=pval<0.05)) + 
@@ -563,143 +435,171 @@ print(FE.gxenv)
 
 ggsave(paste0(draftimg,'FExgene.pdf'))
 
+
 #####
 #plot for presentation
 
-ggplot(res.gxe[grep('U/E',res.gxe$effname),],aes(y=est,x=effname,color=pval<0.05)) + 
+ggplot(res.gxe[grep('U/E',res.gxe$effname),],
+       aes(y=est,x=effname,color=pval<0.05)) + 
   geom_point(size=2) +
   geom_abline(slope=0,intercept=0,color='white') +
   geom_errorbar(aes(ymax=est+1.96*se,ymin=est-1.96*se),width=0,size=1.25) +
   theme_present() + 
   scale_color_brewer('p<0.05',palette='Blues',direction=-1) +
-  scale_x_discrete(limits=
-                     rev(levels(res.gxe$effname)[grep('U/E',levels(res.gxe$effname))])) +
+  #scale_x_discrete(limits=
+  #                   rev(levels(res.gxe$effname)[grep('U/E',levels(res.gxe$effname))])) +
   coord_flip() + ylab('') + xlab('')
 
 ggsave(paste0(draftimg,'FExgene.png'),
        bg='transparent',
        height=5.5,width=12)
 
+
+#######
+#sliced by selected wave
+wv=7
+analyze = analyze %>%
+  mutate(period = ifelse(wave>=wv,paste(wv,'+'),paste(wv,'-')))
+
+
+plm.gxe2 = lapply(split(analyze,analyze[,'period']), function(x)
+  plm(cesd~age + (ret + unemp)*pm_uer + marr +
+                (ret+unemp)*pm_uer + lnwlth + lninc + negwlth +
+                iwendy + (pm_uer + (ret+unemp)*pm_uer):pgs.swb,
+              index='hhidpn',model='within',data=x)
+)
+
+mktab = function(mod){
+  tab = as.data.frame(coef(summary(mod)))
+  tab$se = paste0('(',rnd(tab$`Std. Error`),')')
+  tab$sig = sig(tab$`Pr(>|t|)`)
+  return(tab %>% select(Estimate,se,sig))
+}
+
+###the effect of both pgs and retirment changes...
+yr=min(analyze$iwendy[analyze$wave==wv])
+
+plm.split = kable(do.call(cbind,lapply(plm.gxe2,mktab)),
+                  caption=paste0('Split to before',
+                                 yr,
+                                 'and including and after',
+                                 yr,
+                                 '.'))
+
+#######
+#plot
+
+res.gxe2 = do.call(rbind,lapply(plm.gxe2,function(x)
+                                as.data.frame(coef(summary(x)))))
+colnames(res.gxe2) = c('est','se','tv','pval')
+res.gxe2$effname = factor(substr(rownames(res.gxe2),start=5,stop=100))
+res.gxe2$period = substr(rownames(res.gxe2),start=1,stop=3)
+
+res.gxe2$alpha = cut(1-res.gxe2$pval,
+                     breaks=c(1,.999,.99,.95,.9,0),
+                     labels=rev(c('0.001','0.01','0.05','0.1','1')))
+
+gxe = grepl('swb',levels(res.gxe2$effname))
+sel = levels(res.gxe2$effname)[gxe]
+res.gxe2 = res.gxe2 %>% 
+  filter(effname %in% sel)
+
+res.gxe2$effname = factor(res.gxe2$effname,
+                          exclude=levels(res.gxe2$effname)[!gxe])
+
+levels(res.gxe2$effname) = c('U/E Rate','Retirement','Retirement x U/E',
+                             'Unemp','Unemp x U/E')
+
+FE.gxenv2 = ggplot(res.gxe2,
+                   aes(y=est,x=effname,
+                       alpha=alpha,shape=period)) + 
+  geom_abline(slope=0,intercept=0) +
+  geom_errorbar(aes(ymax=est+1.96*se,ymin=est-1.96*se),width=0,size=1.25) +
+  geom_point(size=2,alpha=1) +
+  theme_classic() + 
+  scale_x_discrete(limits=rev(levels(res.gxe2$effname))) +
+  coord_flip() + ylab('') + xlab('') +
+  scale_shape_manual('',values=c(0,1),
+                     labels=c(paste(min(analyze$iwendy),'to',yr-1),
+                              paste(yr,'to',max(analyze$iwendy)))
+                     ) +
+  scale_alpha_discrete('p<',
+                       range=c('0.1','0.5','0.9')) +
+  guides(alpha = guide_legend(override.aes = list(linetype=1))) +
+  labs(title='Interaction with PGS for SWB.')
+
+print(FE.gxenv2)
+
+
 ######
-#regression analysis
-env.mod = lmer(cesd~iuer + md_uer +
-       iret + md_ret + iunemp + md_unemp +
-       male + age + 
-       I(age^2) + male + marr + iatota + iitot + 
-       md_atota + md_itot +
-       (1|hhidpn),
-     data=analyze )
+#work62
 
+wk = analyze %>% group_by(hhidpn) %>%
+      mutate(iwork65 = mean(work65, na.rm=TRUE),
+             md_work65 = work65 - iwork65,
+             irplnya = mean(rplnya,na.rm=TRUE),
+             md_rplnya= rplnya - irplnya) %>%
+      ungroup
 
+hist(wk$md_work65)
 
+plm.gxe3 = plm(drinkn~age + pm_uer + marr +
+        + lnwlth + lninc + negwlth +
+        iwendy + rplnya + (iwendy + pm_uer + rplnya):pgs.swb,
+      index='hhidpn',model='within',
+      data=analyze %>% 
+        filter(unemp==0 & ret==0)) 
 
-print(summary(env.mod))
-hlm.sim = FEsim(env.mod,n.sims=200)
-levels(hlm.sim$term)[c(7,14)] = c('Between Person U/E','Within Person U/E')
-#sel=grepl('uer',hlm.sim$term)
-plotFEsim(hlm.sim[2:3,]) + ylab('') + xlab('') +
-  ylim(-0.3,0.3) +
-  labs(caption='With all controls:gender, age (squared), marital status, HH income, and HH wealth.')
-
-ggsave(paste0(outdir,'env_eff.pdf'))
-
-plotFEsim(hlm.sim)
-ggsave(paste0(outdir,'fullenv.pdf'))
-
-ge.mod = lmer(cesd~(iuer + md_uer)*pgs.swb +
-                 iret + md_ret + iunemp + md_unemp +
-                  male + age + 
-                 I(age^2) + marr + iatota + iitot + 
-                 md_atota + md_itot +
-                 (1|hhidpn),
-               data=analyze)
-
-
-print(summary(ge.mod))
-hlm.sim = FEsim(ge.mod,n.sims=200)
-sel=grepl('uer|pgs',hlm.sim$term)
-levels(hlm.sim$term)[c(7,8,15,16,18)] = c('Between Person U/E',
-                                          'Between Person U/E x PGS',
-                                          'Within Person U/E',
-                                          'Within Person U/E x PGS',
-                                          'PGS (SWB)')
-plotFEsim(hlm.sim[sel,]) + ylab('') + xlab('') +
-  ylim(-0.3,0.3) +
-  labs(caption='With all controls:gender, age (squared), marital status, HH income, and HH wealth.')
-
-ggsave(paste0(outdir,'gxe_eff.pdf'))
-
-plotFEsim(hlm.sim)
-ggsave(paste0(outdir,'fullgxe.pdf'))
-
-######
-#regression analysis
-
-hlm.env = lmer(cesd~iuer + r_cohort + r_intens +
-               md_uer +
-               factor(iwendy) + male + age + 
-               I(age^2) + marr + iatota + iitot + 
-               md_atota + md_itot +
-               (1|hhidpn),
-             data=analyze %>% filter(r_intens<3))
-
-print(summary(hlm.env))
-hlm.sim = FEsim(hlm.env,n.sims=200)
-yrs=grepl('factor',hlm.sim$term)
-plotFEsim(hlm.sim[!yrs,])
-
-
-hlm.enva = lmer(md_cesd~iuer + r_cohort + r_intens +
-                 md_uer*(unemp+ret) +
-                 factor(iwendy) + male + age + 
-                 I(age^2) + marr + iatota + iitot + 
-                 md_atota + md_itot +
-                 (1|hhidpn),
-               data=analyze %>% filter(r_intens<3))
-
-print(summary(hlm.enva))
-
-
-hlm.gxe = lmer(cesd~(iuer + md_uer+r_cohort+r_intens)*pgs.swb+
-                male + age + 
-                 I(age^2) + marr + iatota + iitot + 
-                 md_atota + md_itot +
-                 (1|hhidpn),
-               data=analyze )
-
-print(summary(hlm.gxe))
-hlm.sim = FEsim(hlm.gxe,n.sims=200)
-yrs=grepl('factor|marr|male|age',hlm.sim$term)
-tots=grepl('tot',hlm.sim$term)
-plotFEsim(hlm.sim[!yrs,])
-plotFEsim(hlm.sim[tots,])
-
-hlm.envd = lmer(md_cesd~(iuer + md_uer + r_cohort + r_intens) +
-                  factor(iwendy) + male + age + 
-                  I(age^2) + marr + iatota + iitot + 
-                  md_atota + md_itot +
-                  (1|hhidpn),
-                data=analyze %>% filter(r_intens<3))
-
-print(summary(hlm.envd))
-hlm.sim = FEsim(hlm.envd,n.sims=200)
-yrs=grepl('factor',hlm.sim$term)
-plotFEsim(hlm.sim[!yrs,])
+summary(plm.gxe3)
 
 #note that NEU has most effect on rcohort/rintens ...
+###this works just fine! --- need to fix to log income/etc
 
-hlm.gxed = lmer(cesd~(iuer + md_uer + r_cohort + r_intens + recession)*pgs.swb +
-                  male + age + 
-                   marr + iatota + iitot + 
-                  md_atota + md_itot + md_unemp + md_ret + iunemp + iret +
+#######
+#model from r_study ---- factors test
+
+analyze = analyze %>% 
+  group_by(hhidpn) %>%
+  mutate_at(vars(c('lninc','lnwlth','negwlth')),
+            funs(i=mean(.,na.rm=TRUE),
+                 md=.-mean(.,na.rm=TRUE))) %>%
+  ungroup
+  
+hlm.fac = lmer(cesd~(iuer + md_uer + factor(r_intens) + recession) +
+                  male  + raedyrs + age +
+                  marr + lninc_i + lnwlth_i + negwlth_i +
+                  lninc_md + lnwlth_md + negwlth_md +
+                  md_unemp + md_ret + iunemp + iret +
                   (1|hhidpn),
-                data=analyze %>% filter(r_intens<3))
+                data=analyze %>% filter(rabyear>1920) )
+
+print(summary(hlm.fac))
+hlm.sim = FEsim(hlm.fac,n.sims=200)
+yrs=grepl('factor',hlm.sim$term)
+hlm.sim=hlm.sim[yrs,]
+hlm.sim$term = droplevels(hlm.sim$term)
+plt = plotFEsim(hlm.sim) + 
+  scale_x_discrete(limits=levels(hlm.sim$term))
+print(plt)
+
+#######
+#model from r_study -- excluding great depression
+
+hlm.gxed = lmer(cesd~(iuer + md_uer + r_cohort + r_intens + recession):pgs.swb +
+                 male  + raedyrs + age +
+                 marr + lninc_i + lnwlth_i + negwlth_i +
+                 lninc_md + lnwlth_md + negwlth_md +
+                 md_unemp + md_ret + iunemp + iret +
+                 (1|hhidpn),
+               data=analyze %>% filter(rabyear>1920) )
 
 print(summary(hlm.gxed))
 hlm.sim = FEsim(hlm.gxed,n.sims=200)
-yrs=grepl('factor',hlm.sim$term)
-plt = plotFEsim(hlm.sim[!yrs,])
+plt = plotFEsim(hlm.sim) + 
+  scale_x_discrete(limits=rev(hlm.sim$term))
 print(plt)
+
+
 
 ####
 #pgs plot for presentation
@@ -715,15 +615,35 @@ ggsave(paste0(draftimg,'pgs-swb.png'),
        height=5,width=5)
 
 
-#######
-#model from r_study
+
+
+
 
 ###
 #survival analysis
 
 library(survival)
 
-#load cleandat and use iwstat to identify wave of death...
+#per codebook, rand uses sas dates, i.e.
+#number of days since 1/1/1960
+sasdate=as.Date('1960-1-1')
+
+
+#limit to individual, and calculate times
+analyze.s = analyze %>%
+  group_by(hhidpn) %>%
+  summarize(birthd = sasdate + mean(rabdate,na.rm=TRUE),
+         intvd = max(as.Date(paste0(iwendy,'-',iwendm,'-15')),na.rm=TRUE), #impute as to the 15th of the month
+         deathd = sasdate + mean(randate,na.rm=TRUE),
+         time = max(c(intvd,deaths),na.rm=TRUE), #last follow-up
+         dead = mean(!is.na(randate)),
+         pgs.swb = mean(pgs.swb,na.rm=TRUE),
+         male = mean(male, na.rm=TRUE)) %>%
+  ungroup
+
+###
+#prepare kaplan-meyer curves
+
 
 
 #p1=plm(cesd~pm_uer+marr+age,data=analyze,index='hhidpn',model='within')
@@ -732,5 +652,5 @@ library(survival)
 #predicts marriage!
 #summary(glm(marr~symp,data=analyze,family=binomial(link='logit')))
 
-
-
+#save space for loading
+save.image('analyze_env~.RData')

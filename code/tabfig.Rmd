@@ -1,0 +1,196 @@
+---
+title: "tabfig"
+author: "Bryce Bartlett"
+date: "December 21, 2017"
+output: html_document
+---
+
+```{r setup, cache=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_knit$set(root.dir = 'H:/prjects/happy_gene/code')
+#source('H:/projects/happy_gene/code/funs.R')
+source("H:/projects/happy_gene/code/config~.R")
+load('H:/projects/happy_gene/analyze_env~.RData',verbose=TRUE)
+
+```
+
+Table 1 full descriptives.
+
+```{r descriptive, echo=FALSE}
+
+descriptives = function(df,vars){
+  #helper function that returns summary mean, sd, and n
+  #df is dataframe
+  #vars is character vector of varialbe names
+d=list(  
+mean = df %>% 
+  select(one_of(vars)) %>%
+  summarize_all(mean,na.rm=TRUE),
+sd = df %>% 
+  select(one_of(vars)) %>%
+  summarize_all(sd,na.rm=TRUE),
+min = df %>%
+  select(one_of(vars)) %>%
+  summarize_all(min,na.rm=TRUE),
+max = df %>%
+  select(one_of(vars)) %>%
+  summarize_all(max,na.rm=TRUE),
+n = df %>% 
+  select(one_of(vars)) %>%
+  summarize_all(funs(sum(is.na(.))/nrow(analyze)))
+)
+
+res = do.call(cbind,lapply(d,t))
+
+colnames(res) = names(d)
+
+return(res)
+
+}
+
+
+kable(
+  descriptives(df=analyze, vars=c('cesd','md_cesd','ret','unemp','iwendy','age','pm_uer','md_uer','lnwlth','negwlth','lninc','male','marr','work65','rplnya','rplnyr')),
+  caption=paste0('n=',nrow(analyze))
+)
+
+```
+
+## Individual level descriptives
+
+
+```{r idescribe, echo=FALSE}
+
+nw = analyze %>%
+  group_by(rahhidpn) %>% 
+  summarize(male = mean(male,na.rm=TRUE),
+            nwave = n(),
+            icesd = mean(cesd,na.rm=TRUE),
+            pgs.swb = mean(pgs.swb,na.rm=TRUE),
+            iuer = mean(pm_uer,na.rm=TRUE),
+            ret = mean(ret,na.rm=TRUE),
+            unemp = mean(unemp,na.rm=TRUE),
+            dead = mean(!is.na(randate))) %>%
+  ungroup
+
+sel = colnames(nw)[colnames(nw)!='rahhidpn']
+
+res = descriptives(df=nw,
+                   vars=sel)
+
+kable(res,caption=paste0('n=',nrow(nw)))
+
+```
+
+Figure 1. PGS Quintiles and ICESD.
+
+```{r imeans,echo=FALSE}
+print(imeans)
+```
+
+
+
+Figure 2. Unemployment Rate over time.
+
+```{r uetrend, echo=FALSE}
+print(uetrend)
+
+```
+
+
+Figure 3. CESD and Unemployment Rate by PGS Quintile
+
+```{r deltaviz, echo=FALSE}
+print(deltaviz)
+
+```
+
+
+Table __. Results of environment and interaction models.
+
+```{r initial effects}
+
+ee = mktab(plm.e); ee$eff=row.names(ee)
+be = mktab(plm.gxe); be$eff = row.names(be)
+
+bm = data.frame(eff=ee$eff)
+bm = merge(bm,ee,all=TRUE)
+kable(merge(bm,be,by='eff',all=TRUE))
+
+```
+
+
+
+Table __. Results of Cross-year interaction models.
+
+```{r model results, echo=FALSE}
+
+plm.split
+
+```
+
+
+Results figure.
+
+```{r envfig, echo=FALSE}
+
+print(FE.gxenv2)
+
+```
+
+
+## Some supplemental stuff.
+
+
+## Factor based analysis with plm.
+
+```{r}
+
+
+summary(
+  plm(cesd~age + (ret + unemp)*pm_uer + marr + iwendy +
+                (ret+unemp)*pm_uer + lninc+lnwlth+negwlth +
+                (pm_uer + (ret+unemp)*pm_uer):pgs.quart5,
+           index='hhidpn',model='within',data=analyze)
+)
+```
+
+
+
+Evidence of increasing uncertainty in retirement.
+
+```{r retirement1, echo=FALSE}
+
+ggplot(cleandat,aes(x=iwendy,y=age+rplnya-iwendy)) +
+  geom_smooth() +
+  geom_smooth(aes(y=age+rplnyr-iwendy),lty=2) +
+  theme_classic() + geom_abline(slope=0,intercept=65) +
+  labs(title='Smoothed retirement plans (dashed) and expectations (solid).',
+       caption='Full non-retired sample.')
+  
+
+```
+
+```{r}
+ggplot(cleandat,aes(x=iwendy,y=work65,
+                    color=factor(ret),group=factor(ret))) +
+  geom_smooth() +
+  geom_smooth(aes(y=work62),lty=2) +
+  theme_classic() + geom_abline(slope=0,intercept=65) +
+  labs(title='Subjective probability for working past 62 (dashed) and 65.',
+       caption='Full sample.')
+```
+
+```{r}
+analyze = analyze %>% 
+  mutate(rage = rplnya - iwendy + age)
+
+summary(
+  plm(cesd~age + pm_uer + marr + iwendy + 
+                 lninc+lnwlth+negwlth + rage + 
+                pm_uer:pgs.quart,
+           index='hhidpn',model='within',
+      data=analyze )
+)
+
+```

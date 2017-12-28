@@ -18,7 +18,7 @@ import json
 import csv
 headers = {'Content-type': 'application/json'}
 apicall = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'
-outdir = "H:/projects/proposal/r_study/output/"
+outdir = "H:/projects/happy_gene/output/"
 keyfile = 'H:/projects/proposal/r_study/code/blskey~.txt'
 
 #@@@
@@ -37,7 +37,7 @@ apikey=open(keyfile).readlines()[0].rstrip('\n')
 #Also, mass layoff series might be relevant
 
 '''
-IDENTIFIER: 
+IDENTIFIER:
 index seasonal adjustment          area    datatype
 #LA           U           RD8100000000000     03
 CENSUS regions
@@ -45,7 +45,7 @@ N	RD8100000000000	New England division
 N	RD8200000000000	Middle Atlantic division
 N	RD8300000000000	East North Central division
 N	RD8400000000000	West North Central division
-N	RD8500000000000	South Atlantic division	
+N	RD8500000000000	South Atlantic division
 N	RD8600000000000	East South Central division
 N	RD8700000000000	West South Central division
 N	RD8800000000000	Mountain division
@@ -63,8 +63,8 @@ for i in range(1,10):
 sd = {}
 sd["registrationkey"] = apikey
 sd["seriesid"] = s
-sd["startyear"] = "1996"
-sd["endyear"] = "2015"
+sd["startyear"] = "1976"
+sd["endyear"] = "1995"
 
 #reformat dictionary to JSON format
 data = json.dumps(sd)
@@ -102,12 +102,12 @@ for d in json_data['Results']['series']:
         #recover region number 1-9 (matches GSS from census)
         newline['region'] = d['seriesID'][6:7]
         newline=newline
-             
+
         tocsv.append(newline)
 
 
 keys = tocsv[0].keys()
-with open(outdir + 'blsdat1996.csv', 'w') as output_file:
+with open(outdir + 'blsdat1976.csv', 'w') as output_file:
     dict_writer = csv.DictWriter(output_file, keys)
     dict_writer.writeheader()
     dict_writer.writerows(tocsv)

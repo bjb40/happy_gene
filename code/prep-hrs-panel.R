@@ -63,6 +63,9 @@ vars = c(
   #interview status = 5 = died this wave; 6 died previous wave
   makeseq('r',waves,'iwstat'),
   
+  #variables regarding mortality
+  'raddate', 'randate', #n indicates NDI, D indicates inerview
+  
   #alt growth variable percentages (leaving retirement,suriviving,continue working)
   #self reported probability of working after 62 and 65 respectivley on 10 point scale (multiplied by 10)
   makeseq('r',waves,'work62'),
@@ -70,7 +73,7 @@ vars = c(
   makeseq('r',waves,'shlt'), #self-reported health
   
   #@@time variable baseline to be calculated from birthyear
-  'rabyear',
+  'rabyear','rabdate',
   
   #@@time-invariant variables associated with depressive symptoms
   
@@ -157,7 +160,8 @@ sink()
 
 #summarize variables and initialize clean dataset
 #fixed
-fvars = c('hhidpn','rahhidpn','rabyear','ragender','raedyrs','raracem','has_pgs')
+fvars = c('hhidpn','rahhidpn','rabyear','rabdate','ragender',
+          'raedyrs','raracem','has_pgs','randate','raddate')
 #respondent change variables
 rcvars = c('cendiv','cesd','mstat','drinkn','lbrf','work62','work65',
            'rplnyr','rplnya','sayret','retyr','retmon',
@@ -246,7 +250,7 @@ rm(r_cohort,recessions,r_intens)
 longdat$greatmod = NA #did person come of age during great moderation
 longdat$greatmod[longdat$rabyear <= 1986] = 0
 longdat$greatmod[longdat$rabyear > 1987] = 1
-
+  
 #@@@@@@@@@
 #Add BLS unemployment data by region
 #@@@@@@@@@
@@ -254,7 +258,11 @@ longdat$greatmod[longdat$rabyear > 1987] = 1
 #CHANGE NOT IN US TO MISSING: very few
 longdat$cendiv[longdat$cendiv == 11] = NA
 
-load(paste0(outdir,'blsdat.RData'))
+###use bls api to load these
+blsdat = rbind(read.csv(paste0(outdir,'blsdat1976.csv')),
+              read.csv(paste0(outdir,'blsdat1996.csv')))
+
+#load(paste0(outdir,'blsdat.RData'))
 #blsdat = read.csv(paste0(outdir,"blsdat.csv"))
 
 #initialize current month "cm" and prior monh "pm" unemployment rate "uer"
@@ -263,8 +271,8 @@ longdat$pm_uer = NA
 
 for(i in 1:nrow(longdat)){
   
-  if(longdat[i,'iwendy'] >= min(years,na.rm=TRUE) & 
-     longdat[i,'iwendy'] <=max(years,na.rm=TRUE) & 
+  if(#longdat[i,'iwendy'] >= min(years,na.rm=TRUE) & 
+     #longdat[i,'iwendy'] <=max(years,na.rm=TRUE) & 
       is.na(longdat[i,'iwendy'])==F & 
       is.na(longdat[i,'iwendm'])==F &
       is.na(longdat[i,'cendiv'])==F
@@ -275,7 +283,7 @@ for(i in 1:nrow(longdat)){
     pm = m-1
     r = longdat[i,'cendiv']
     missing = any(is.na(c(yr,m,pm,r)) == T)
-    if(yr == 2012 & m == 12){missing = T}
+    #if(yr == 2012 & m == 12){missing = T}
     
     if (missing == F){
       
@@ -377,8 +385,8 @@ sink()
 #3. arbitrary limit to make size workable (can be removed for substantive anlaysis)
 #@@@@@@@@@@@@@@@@@@@@@
 
-#delete cases with no CESD info and delete original variables in favor of renamed variables
-cleandat=longdat[is.na(longdat$cesd)==F,!(names(longdat) %in% c('ragender','mstat','lbrf'))]
+#ddelete original variables in favor of renamed variables
+cleandat=longdat[,!(names(longdat) %in% c('ragender','mstat','lbrf'))]
 
 #print overview of deletions
 sink(paste(outdir,'cleanhrs-overview.txt',sep=''))
