@@ -2,7 +2,9 @@
 title: "tabfig"
 author: "Bryce Bartlett"
 date: "December 21, 2017"
-output: html_document
+output:
+  html_document: default
+  word_document: default
 ---
 
 ```{r setup, cache=FALSE, include=FALSE}
@@ -10,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 #knitr::opts_knit$set(root.dir = 'H:/prjects/happy_gene/code')
 #source('H:/projects/happy_gene/code/funs.R')
 source("H:/projects/happy_gene/code/config~.R")
-load('H:/projects/happy_gene/analyze_env~.RData',verbose=TRUE)
+load('H:/projects/happy_gene/analyze_env~.RData')
 
 ```
 
@@ -18,41 +20,28 @@ Table 1 full descriptives.
 
 ```{r descriptive, echo=FALSE}
 
-descriptives = function(df,vars){
-  #helper function that returns summary mean, sd, and n
-  #df is dataframe
-  #vars is character vector of varialbe names
-d=list(  
-mean = df %>% 
-  select(one_of(vars)) %>%
-  summarize_all(mean,na.rm=TRUE),
-sd = df %>% 
-  select(one_of(vars)) %>%
-  summarize_all(sd,na.rm=TRUE),
-min = df %>%
-  select(one_of(vars)) %>%
-  summarize_all(min,na.rm=TRUE),
-max = df %>%
-  select(one_of(vars)) %>%
-  summarize_all(max,na.rm=TRUE),
-n = df %>% 
-  select(one_of(vars)) %>%
-  summarize_all(funs(sum(is.na(.))/nrow(analyze)))
-)
 
-res = do.call(cbind,lapply(d,t))
+v=c('cesd','md_cesd','fd_cesd','ret','unemp','age',
+    'pm_uer','md_uer','fd_uer',
+    'lnwlth','negwlth','lninc','male','marr')
 
-colnames(res) = names(d)
+d = as.data.frame(do.call(cbind,lapply(split(analyze,factor(analyze$period)),
+           function(x) descriptives(df=x,vars=v)[,1:2])))
 
-return(res)
+#test differnece in means over periods
+delt = sig(bi.test(df=analyze,vars=v,slice='period')[,'pval'])
 
-}
+d$pval = unlist(delt)
 
+ids = analyze %>% 
+  group_by(period) %>% 
+  summarize(n=n(),
+              i=length(unique(hhidpn)))
 
-kable(
-  descriptives(df=analyze, vars=c('cesd','md_cesd','ret','unemp','iwendy','age','pm_uer','md_uer','lnwlth','negwlth','lninc','male','marr','work65','rplnya','rplnyr')),
-  caption=paste0('n=',nrow(analyze))
-)
+kable(cbind(d,descriptives(df=analyze,vars=v)[,3:5]),
+      digits=3,
+      caption=ids)
+
 
 ```
 
@@ -141,6 +130,53 @@ print(FE.gxenv2)
 
 ## Some supplemental stuff.
 
+Additional Descriptive plots: Distribution of changes (first difference).
+
+
+
+```{r}
+ggplot(analyze,aes(fd_uer)) + 
+  geom_histogram(bins=50) + 
+  facet_grid(pgs.quart5~period) + 
+  geom_vline(xintercept=c(-1,0,1)) + 
+  theme_minimal()
+
+```
+
+
+First difference model (because the u/e rate is dependent on the last level, i.e. not random).
+
+```{r}
+fd.gxe <- plm(cesd ~ pm_uer*(ret + unemp)+
+                (pm_uer*(ret + unemp)):pgs.swb, data=analyze, 
+              index=c("hhidpn", "iwendy"), 
+              na.action=na.omit, model="fd")
+summary(fd.gxe)
+```
+
+```{r}
+fd.gxe2 <- lapply(split(analyze,analyze[,'period']), function(x)
+  plm(cesd ~ pm_uer + pm_uer:pgs.swb, data=x, 
+              index=c("hhidpn", "iwendy"), 
+              na.action=na.omit, model="fd"))
+
+lapply(fd.gxe2,summary)
+
+
+```
+
+## Pooled dummy first difference model
+
+Note that results below display the same associtions with a reduced model; using a first-difference model eliminates 10,000 observations and statistical significance.
+
+```{r}
+fd.gxe <- plm(cesd ~ (pm_uer + pm_uer:pgs.swb + lnwlth + lninc + negwlth + marr + unemp + ret)*period, data=analyze, 
+              index=c("hhidpn",'iwendy'), 
+              na.action=na.omit, model="fd")
+summary(fd.gxe)
+```
+
+
 
 ## Factor based analysis with plm.
 
@@ -182,6 +218,7 @@ ggplot(cleandat,aes(x=iwendy,y=work65,
 ```
 
 ```{r}
+
 analyze = analyze %>% 
   mutate(rage = rplnya - iwendy + age)
 
@@ -194,3 +231,10 @@ summary(
 )
 
 ```
+
+No appreciable differneces in survival (by quartile)
+
+```{r}
+print(survplot)
+```
+

@@ -91,6 +91,16 @@ analyze = merge(analyze,analyze.panel,by='hhidpn') %>%
          md_inc = lninc - iinc) %>%
   ungroup
 
+
+##mutate to add slice by a particular wave
+wv=7
+p1 = paste(range(analyze$iwendy[analyze$wave>=wv]),collapse='-')
+p2 = paste(range(analyze$iwendy[analyze$wave<wv]),collapse='-')
+
+analyze = analyze %>%
+  mutate(period = ifelse(wave>=wv,p1,p2))
+
+
 #Replication of GSS panel model (but using cesd, and log wealth and income)
 #(need to add education!!)
 hlm = lmer(cesd~r_cohort + r_intens +
@@ -231,13 +241,16 @@ plotFEsim(hlm.sim)
 ######
 #some descriptive plots
 
+vl = min(analyze$iwendy[analyze$wave==wv])
+
 uetrend = ggplot(analyze,aes(x=iwendy,y=pm_uer)) +
   geom_line(stat='summary',fun.y='mean',size=2) +
   geom_point(aes(x=(iwendy+iwendm/12)),alpha=0.01) +
   theme_classic() +
   labs(title='Observed Unemployment Rates and Mean',
        caption='U/E from the month prior to interview.') +
-  xlab('') + ylab('Regional Unemployment Rate.')
+  xlab('') + ylab('Regional Unemployment Rate.') +
+  geom_vline(xintercept=vl,color='grey')
 
 print(uetrend)
 
@@ -297,42 +310,60 @@ analyze$uer_up = analyze$md_uer>0
 
 #mean cesd by pgs quantile
 ianalyze = analyze %>% 
-  group_by(hhidpn) %>%
+  group_by(hhidpn,period) %>%
   summarize(cesd = mean(cesd,na.rm=TRUE),
             pgs.quart5 = mean(as.numeric(pgs.quart5),na.rm=TRUE)) %>%
   ungroup
 
 ianalyze = ianalyze %>%
-  group_by(pgs.quart5) %>%
+  group_by(pgs.quart5,period) %>%
   summarize(n=sum(!is.na(cesd)),
-            prop_cesd = sum(cesd>1)/n,
+            prop_cesd = sum(cesd>1,na.rm=TRUE)/n,
             sd_prop = sqrt((prop_cesd*(1-prop_cesd))/n)) %>%
   ungroup %>%
   filter(!is.na(pgs.quart5))
   
 #cesd change from mean by pgs quantile
-imeans = ggplot(ianalyze,aes(x=pgs.quart5,y=prop_cesd)) +
-  geom_bar(stat='identity',fill='grey') +
-  geom_errorbar(aes(ymax=prop_cesd + 1.34*sd_prop,ymin=prop_cesd - 1.34*sd_prop),width=0) +
-  theme_classic() + xlab('PGS Quintile') + ylab('Proportion with Individual Mean CESD > 1')
+imeans = ggplot(ianalyze,aes(x=pgs.quart5,y=prop_cesd,fill=period)) +
+  geom_bar(stat='identity', position=position_dodge(width=0.5)) +
+  geom_errorbar(
+    aes(ymax=prop_cesd + 1.96*sd_prop,ymin=prop_cesd - 1.96*sd_prop),
+    width=0,position=position_dodge(width=0.5)) +
+  theme_classic() + xlab('PGS Quintile') + 
+  ylab('Proportion with Individual Mean CESD > 1') +
+  scale_fill_grey('')
 
 print(imeans)
 ggsave(paste0(draftimg,'indiv_pgs.pdf'))
 
+####calculate first differences
+analyze  = analyze %>%
+  group_by(hhidpn) %>%
+  arrange(hhidpn,wave) %>%
+  mutate(fd_cesd = cesd - lag(cesd), 
+         fd_uer = pm_uer - lag(pm_uer),
+         fd_ret = ret - lag(ret),
+         uer_up1 = fd_uer>0) %>%
+  ungroup
+
+#head(analyze[,c('hhidpn','wave','pm_uer','fd_uer','cesd','fd_cesd')])
+
 #####
 #observation level
+#---note somcpositonal selection into retirement
 subanalyze = analyze %>%
-  group_by(pgs.quart5,uer_up) %>%
-  summarize(mean_cesd = mean(md_cesd,na.rm=TRUE),
-            prop_cesd = mean(md_cesd>0,na.rm=TRUE),
-            n = sum(!is.na(md_cesd)),
-            sd_cesd = sd(md_cesd,na.rm=TRUE),
+  group_by(pgs.quart5,uer_up1,period,laborcat) %>%
+  summarize(mean_cesd = mean(fd_cesd,na.rm=TRUE),
+            prop_cesd = mean(fd_cesd>0,na.rm=TRUE),
+            prop_ret = mean(fd_ret>0,na.rm=TRUE),
+            n = sum(!is.na(fd_cesd)),
+            sd_cesd = sd(fd_cesd,na.rm=TRUE),
             sd_prop = sqrt((prop_cesd*(1-prop_cesd))/sum(!is.na(md_cesd))))
 
 subanalyze = subanalyze[complete.cases(subanalyze),]
 
 deltas=subanalyze %>% 
-  group_by(pgs.quart5) %>%
+  group_by(pgs.quart5,period,laborcat) %>%
   summarize(max=max(prop_cesd),
             min=min(prop_cesd),
             ps=sum(prop_cesd*n)/sum(n),
@@ -343,15 +374,17 @@ deltas=subanalyze %>%
             star=sig(pval))
 
 deltaviz = ggplot(subanalyze) +
-  geom_line(aes(x=pgs.quart5,y=prop_cesd,group=uer_up),alpha=0.2) +
-  geom_point(aes(x=pgs.quart5,y=prop_cesd,group=uer_up,shape=uer_up),size=2) +
+  geom_line(aes(x=pgs.quart5,y=prop_cesd,group=uer_up1),alpha=0.2) +
+  geom_point(aes(x=pgs.quart5,y=prop_cesd,group=uer_up1,shape=uer_up1),size=2) +
   geom_text(data=deltas,aes(x=pgs.quart5,y=max-pd/2,label=star)) +
+  geom_hline(yintercept = 0.3, color='grey') + 
   theme_classic() +
   ylab('Proportion with Increasing CESD') + xlab('PGS Quintile') +
   scale_x_discrete(labels=paste0('Q',c(1:5))) +
   scale_shape_discrete(labels=c('Stable or Declining U/E','Increasing U/E')) +
   guides(shape=guide_legend(title=NULL)) +
-  theme(legend.position='bottom')
+  theme(legend.position='bottom') +
+  facet_grid(period~laborcat)
   
 print(deltaviz)
 ggsave(paste0(draftimg,'prop_deltas.pdf'))
@@ -414,8 +447,11 @@ plm.gxe = plm(cesd~age + (ret + unemp)*pm_uer + marr + iwendy +
                 (pm_uer + (ret+unemp)*pm_uer + iwendy):pgs.swb,
            index='hhidpn',model='within',data=analyze)
 
-###
+plm.gxe.reduce = plm(cesd~pm_uer*(ret + unemp) + (pm_uer*(ret + unemp):pgs.swb),
+                     index='hhidpn',model='within',data=analyze)
 
+
+###
 res.gxe = as.data.frame(coef(summary(plm.gxe)))
 res.gxe$effname = factor(row.names(res.gxe))
 #levels(res.gxe$effname) = c('Age','Log Inc.','Log Wealth',
@@ -456,10 +492,7 @@ ggsave(paste0(draftimg,'FExgene.png'),
 
 
 #######
-#sliced by selected wave
-wv=7
-analyze = analyze %>%
-  mutate(period = ifelse(wave>=wv,paste(wv,'+'),paste(wv,'-')))
+#models sliced by selected wave -- period
 
 
 plm.gxe2 = lapply(split(analyze,analyze[,'period']), function(x)
@@ -469,12 +502,12 @@ plm.gxe2 = lapply(split(analyze,analyze[,'period']), function(x)
               index='hhidpn',model='within',data=x)
 )
 
-mktab = function(mod){
-  tab = as.data.frame(coef(summary(mod)))
-  tab$se = paste0('(',rnd(tab$`Std. Error`),')')
-  tab$sig = sig(tab$`Pr(>|t|)`)
-  return(tab %>% select(Estimate,se,sig))
-}
+plm.gxe2.reduce = lapply(split(analyze,analyze[,'period']), function(x)
+  plm(cesd~(ret + unemp)*pm_uer + ((ret+unemp)*pm_uer):pgs.swb,
+      index='hhidpn',model='within',data=x)
+)
+
+print(lapply(plm.gxe2.reduce,summary))
 
 ###the effect of both pgs and retirment changes...
 yr=min(analyze$iwendy[analyze$wave==wv])
@@ -492,7 +525,7 @@ plm.split = kable(do.call(cbind,lapply(plm.gxe2,mktab)),
 res.gxe2 = do.call(rbind,lapply(plm.gxe2,function(x)
                                 as.data.frame(coef(summary(x)))))
 colnames(res.gxe2) = c('est','se','tv','pval')
-res.gxe2$effname = factor(substr(rownames(res.gxe2),start=5,stop=100))
+res.gxe2$effname = factor(substr(rownames(res.gxe2),start=11,stop=100))
 res.gxe2$period = substr(rownames(res.gxe2),start=1,stop=3)
 
 res.gxe2$alpha = cut(1-res.gxe2$pval,
@@ -614,16 +647,6 @@ ggsave(paste0(draftimg,'pgs-swb.png'),
        bg='transparent',
        height=5,width=5)
 
-
-
-
-
-
-###
-#survival analysis
-
-library(survival)
-
 #per codebook, rand uses sas dates, i.e.
 #number of days since 1/1/1960
 sasdate=as.Date('1960-1-1')
@@ -639,12 +662,33 @@ analyze.s = analyze %>%
          dead = mean(!is.na(randate)),
          pgs.swb = mean(pgs.swb,na.rm=TRUE),
          male = mean(male, na.rm=TRUE)) %>%
-  ungroup
+  ungroup  %>%
+  mutate(age = (time - birthd)/365.25,
+         pgs.quart = factor(cut(pgs.swb,4)),
+         pgs.quart5 = factor(cut(pgs.swb,5)))
 
-###
-#prepare kaplan-meyer curves
+analyze.s = analyze.s %>% 
+  mutate(age = age - min(analyze.s$age),
+         pgs.low = ifelse(pgs.quart == levels(analyze.s$pgs.quart)[1],1,0),
+         pgs.high = ifelse(pgs.quart ==  levels(analyze.s$pgs.quart)[4],1,0))
+  
+
+#kaplan meyer -- descriptives
+KM <- survfit(Surv(age,dead)~male+pgs.low+pgs.high, 
+              data=analyze.s)
+summary(KM)
+
+survplot = ggsurvplot(KM,facet.by='male',
+                            data = analyze.s,
+                            conf.int = TRUE,
+                            risk.table=TRUE)
 
 
+
+
+print(survplot +
+        labs(title='KM Plots.',
+             caption='Stratified by Highest and Lowest quartiles'))
 
 #p1=plm(cesd~pm_uer+marr+age,data=analyze,index='hhidpn',model='within')
 #p2=plm(cesd~pm_uer+pm_uer:pgs.swb+marr+age,data=analyze,index='hhidpn',model='within')
