@@ -3,6 +3,7 @@ title: "tabfig"
 author: "Bryce Bartlett"
 date: "December 21, 2017"
 output:
+  pdf_document: default
   html_document: default
   word_document: default
 ---
@@ -151,7 +152,7 @@ fd.gxe <- plm(cesd ~ pm_uer*(ret + unemp)+
                 (pm_uer*(ret + unemp)):pgs.swb, data=analyze, 
               index=c("hhidpn", "iwendy"), 
               na.action=na.omit, model="fd")
-summary(fd.gxe)
+mktab(fd.gxe)
 ```
 
 ```{r}
@@ -160,7 +161,7 @@ fd.gxe2 <- lapply(split(analyze,analyze[,'period']), function(x)
               index=c("hhidpn", "iwendy"), 
               na.action=na.omit, model="fd"))
 
-lapply(fd.gxe2,summary)
+lapply(fd.gxe2,mktab)
 
 
 ```
@@ -173,9 +174,24 @@ Note that results below display the same associtions with a reduced model; using
 fd.gxe <- plm(cesd ~ (pm_uer + pm_uer:pgs.swb + lnwlth + lninc + negwlth + marr + unemp + ret)*period, data=analyze, 
               index=c("hhidpn",'iwendy'), 
               na.action=na.omit, model="fd")
-summary(fd.gxe)
+mktab(fd.gxe)
 ```
 
+## "Hybrid" Random Effects model.
+
+```{r}
+
+hlm.gxe1 = lmer(cesd~(iuer + md_uer + recession)*pgs.swb +
+                 male  + raedyrs + age +
+                 marr + lninc_i + lnwlth_i + negwlth_i +
+                 lninc_md + lnwlth_md + negwlth_md +
+                 (md_unemp + md_ret + iunemp + iret)*pgs.swb +
+                 (1|hhidpn),
+               data=analyze)
+
+mktab(hlm.gxe1)
+
+```
 
 
 ## Factor based analysis with plm.
@@ -183,7 +199,7 @@ summary(fd.gxe)
 ```{r}
 
 
-summary(
+mktab(
   plm(cesd~age + (ret + unemp)*pm_uer + marr + iwendy +
                 (ret+unemp)*pm_uer + lninc+lnwlth+negwlth +
                 (pm_uer + (ret+unemp)*pm_uer):pgs.quart5,

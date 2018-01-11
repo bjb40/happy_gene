@@ -618,7 +618,7 @@ print(plt)
 #######
 #model from r_study -- excluding great depression
 
-hlm.gxed = lmer(cesd~(iuer + md_uer + r_cohort + r_intens + recession):pgs.swb +
+hlm.gxed = lmer(cesd~(iuer + md_uer + r_cohort + r_intens + recession)*pgs.swb +
                  male  + raedyrs + age +
                  marr + lninc_i + lnwlth_i + negwlth_i +
                  lninc_md + lnwlth_md + negwlth_md +
@@ -632,6 +632,14 @@ plt = plotFEsim(hlm.sim) +
   scale_x_discrete(limits=rev(hlm.sim$term))
 print(plt)
 
+
+#####
+#hlm.gxe that confirms **both** gss and hrs studies / size is somewhat smaller
+
+aa = lmer(cesd~(iuer +  md_uer + r_cohort + r_intens)*pgs.swb + period*(iuer + md_uer) + period:iuer:pgs.swb + period:md_uer:pgs.swb +
+             male  +
+             (1|hhidpn),
+           data=analyze %>% filter(laborcat=='emp'))
 
 
 ####
@@ -698,3 +706,4 @@ print(survplot +
 
 #save space for loading
 save.image('analyze_env~.RData')
+save(analyze,file='analyze_dat~.RData') #data only

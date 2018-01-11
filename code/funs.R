@@ -62,6 +62,9 @@ mnsd = function(x){
 mktab = function(mod){
   tab = as.data.frame(coef(summary(mod)))
   tab$se = paste0('(',rnd(tab$`Std. Error`),')')
+  if(! 'Pr(>|t|)' %in% colnames(tab)){
+    tab$`Pr(>|t|)` = pnorm(abs(tab$`t value`),lower.tail=FALSE)*2
+  }
   tab$sig = sig(tab$`Pr(>|t|)`)
   return(tab %>% select(Estimate,se,sig))
 }

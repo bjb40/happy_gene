@@ -18,6 +18,8 @@ bibliography: ./citations/happy_gene.bib
 
 #Abstract
 
+Economic conditions have changed dramatically since the early 1990s with the rise of precarious working conditions, the shift of economic uncertainty from corporations and the government to individuals, and with a large unexpected recession in 2007. Using the Health and Retirement Study (HRS) waves 2-12 (1993-2015; 83,233 observations for 9,947 individuals), we test gene-by-environment associations with depressive symptoms. We measure the economic environment directly by labor force changes (retirement and unemployment), and indirectly by regional unemployment rates. We use individual fixed effect models to test whether changing economic climate enhances gene-environment associations (social trigger) or whether they diminish gene-environment associations (social push). We find evidence for both processes: gene-by-environment associations with retirement diminish over time, but gene-by-environment associations with regional unemployment rates rise over time.
+
 
 
 #Introduction

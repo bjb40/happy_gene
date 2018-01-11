@@ -750,104 +750,37 @@ kable(merge(bm,be,by='eff',all=TRUE))</code></pre>
               index=c(&quot;hhidpn&quot;, &quot;iwendy&quot;), 
               na.action=na.omit, model=&quot;fd&quot;)</code></pre>
 <pre><code>## These series are constants and have been removed: raracem, has_pgs, iwstat, black.x, orace, greatmod, version, black.y</code></pre>
-<pre class="r"><code>summary(fd.gxe)</code></pre>
-<pre><code>## Oneway (individual) effect First-Difference Model
-## 
-## Call:
-## plm(formula = cesd ~ pm_uer * (ret + unemp) + (pm_uer * (ret + 
-##     unemp)):pgs.swb, data = analyze, na.action = na.omit, model = &quot;fd&quot;, 
-##     index = c(&quot;hhidpn&quot;, &quot;iwendy&quot;))
-## 
-## Unbalanced Panel: n=9947, T=1-11, N=80600
-## Observations used in estimation: 70653
-## 
-## Residuals :
-##    Min. 1st Qu.  Median 3rd Qu.    Max. 
-## -8.2255 -0.8736 -0.0461  0.9306  8.1159 
-## 
-## Coefficients :
-##                      Estimate Std. Error t-value       Pr(&gt;|t|)    
-## (intercept)           0.04353    0.00647    6.73 0.000000000017 ***
-## pm_uer               -0.02210    0.00614   -3.60        0.00032 ***
-## ret                  -0.02276    0.04540   -0.50        0.61625    
-## unemp                 0.04415    0.06913    0.64        0.52306    
-## pm_uer:ret            0.01485    0.00712    2.08        0.03714 *  
-## pm_uer:unemp          0.02970    0.01103    2.69        0.00708 ** 
-## pm_uer:pgs.swb        0.00599    0.00602    0.99        0.32043    
-## ret:pgs.swb          -0.01824    0.04511   -0.40        0.68590    
-## unemp:pgs.swb        -0.02221    0.06887   -0.32        0.74711    
-## pm_uer:ret:pgs.swb   -0.00354    0.00705   -0.50        0.61542    
-## pm_uer:unemp:pgs.swb  0.00130    0.01095    0.12        0.90564    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Total Sum of Squares:    201000
-## Residual Sum of Squares: 201000
-## R-Squared:      0.00132
-## Adj. R-Squared: 0.00118
-## F-statistic: 9.36445 on 10 and 70642 DF, p-value: 0.00000000000000104</code></pre>
+<pre class="r"><code>mktab(fd.gxe)</code></pre>
+<pre><code>##                      Estimate      se sig
+## (intercept)           0.04353 (0.006) ***
+## pm_uer               -0.02210 (0.006) ***
+## ret                  -0.02276 (0.045)    
+## unemp                 0.04415 (0.069)    
+## pm_uer:ret            0.01485 (0.007)   *
+## pm_uer:unemp          0.02970 (0.011)  **
+## pm_uer:pgs.swb        0.00599 (0.006)    
+## ret:pgs.swb          -0.01824 (0.045)    
+## unemp:pgs.swb        -0.02221 (0.069)    
+## pm_uer:ret:pgs.swb   -0.00354 (0.007)    
+## pm_uer:unemp:pgs.swb  0.00130 (0.011)</code></pre>
 <pre class="r"><code>fd.gxe2 &lt;- lapply(split(analyze,analyze[,'period']), function(x)
   plm(cesd ~ pm_uer + pm_uer:pgs.swb, data=x, 
               index=c(&quot;hhidpn&quot;, &quot;iwendy&quot;), 
               na.action=na.omit, model=&quot;fd&quot;))</code></pre>
 <pre><code>## These series are constants and have been removed: raracem, has_pgs, iwstat, black.x, orace, greatmod, recession, period, version, black.y
 ## These series are constants and have been removed: raracem, has_pgs, iwstat, black.x, orace, greatmod, period, version, black.y</code></pre>
-<pre class="r"><code>lapply(fd.gxe2,summary)</code></pre>
+<pre class="r"><code>lapply(fd.gxe2,mktab)</code></pre>
 <pre><code>## $`1993-2003`
-## Oneway (individual) effect First-Difference Model
-## 
-## Call:
-## plm(formula = cesd ~ pm_uer + pm_uer:pgs.swb, data = x, na.action = na.omit, 
-##     model = &quot;fd&quot;, index = c(&quot;hhidpn&quot;, &quot;iwendy&quot;))
-## 
-## Unbalanced Panel: n=7386, T=1-5, N=31065
-## Observations used in estimation: 23679
-## 
-## Residuals :
-##    Min. 1st Qu.  Median 3rd Qu.    Max. 
-## -8.1065 -0.9617 -0.0793  0.8969  8.0270 
-## 
-## Coefficients :
-##                Estimate Std. Error t-value       Pr(&gt;|t|)    
-## (intercept)     0.07281    0.01083    6.73 0.000000000018 ***
-## pm_uer         -0.03367    0.00922   -3.65        0.00026 ***
-## pm_uer:pgs.swb -0.01195    0.00921   -1.30        0.19424    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Total Sum of Squares:    65600
-## Residual Sum of Squares: 65600
-## R-Squared:      0.000642
-## Adj. R-Squared: 0.000557
-## F-statistic: 7.60094 on 2 and 23676 DF, p-value: 0.000501
+##                Estimate      se sig
+## (intercept)      0.0728 (0.011) ***
+## pm_uer          -0.0337 (0.009) ***
+## pm_uer:pgs.swb  -0.0120 (0.009)    
 ## 
 ## $`2004-2015`
-## Oneway (individual) effect First-Difference Model
-## 
-## Call:
-## plm(formula = cesd ~ pm_uer + pm_uer:pgs.swb, data = x, na.action = na.omit, 
-##     model = &quot;fd&quot;, index = c(&quot;hhidpn&quot;, &quot;iwendy&quot;))
-## 
-## Unbalanced Panel: n=9946, T=1-6, N=49726
-## Observations used in estimation: 39780
-## 
-## Residuals :
-##    Min. 1st Qu.  Median 3rd Qu.    Max. 
-## -8.0724 -0.9697 -0.0469  0.9382  7.9870 
-## 
-## Coefficients :
-##                Estimate Std. Error t-value   Pr(&gt;|t|)    
-## (intercept)     0.04628    0.00854    5.42 0.00000006 ***
-## pm_uer         -0.00578    0.00378   -1.53       0.13    
-## pm_uer:pgs.swb  0.00614    0.00379    1.62       0.11    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Total Sum of Squares:    115000
-## Residual Sum of Squares: 115000
-## R-Squared:      0.000124
-## Adj. R-Squared: 0.000074
-## F-statistic: 2.47213 on 2 and 39777 DF, p-value: 0.0844</code></pre>
+##                Estimate      se sig
+## (intercept)     0.04628 (0.009) ***
+## pm_uer         -0.00578 (0.004)    
+## pm_uer:pgs.swb  0.00614 (0.004)</code></pre>
 </div>
 <div id="pooled-dummy-first-difference-model" class="section level2">
 <h2>Pooled dummy first difference model</h2>
@@ -856,165 +789,107 @@ kable(merge(bm,be,by='eff',all=TRUE))</code></pre>
               index=c(&quot;hhidpn&quot;,'iwendy'), 
               na.action=na.omit, model=&quot;fd&quot;)</code></pre>
 <pre><code>## These series are constants and have been removed: raracem, has_pgs, iwstat, black.x, orace, greatmod, version, black.y</code></pre>
-<pre class="r"><code>summary(fd.gxe)</code></pre>
-<pre><code>## Oneway (individual) effect First-Difference Model
-## 
-## Call:
-## plm(formula = cesd ~ (pm_uer + pm_uer:pgs.swb + lnwlth + lninc + 
-##     negwlth + marr + unemp + ret) * period, data = analyze, na.action = na.omit, 
-##     model = &quot;fd&quot;, index = c(&quot;hhidpn&quot;, &quot;iwendy&quot;))
-## 
-## Unbalanced Panel: n=9947, T=1-11, N=80572
-## Observations used in estimation: 70625
-## 
-## Residuals :
-##    Min. 1st Qu.  Median 3rd Qu.    Max. 
-## -8.9586 -0.8034 -0.0392  0.9036  8.2650 
-## 
-## Coefficients :
-##                                 Estimate Std. Error t-value
-## (intercept)                     0.039996   0.006846    5.84
-## pm_uer                         -0.034482   0.008834   -3.90
-## lnwlth                          0.046495   0.063614    0.73
-## lninc                          -0.024166   0.009527   -2.54
-## negwlth                         0.163270   0.062624    2.61
-## marr                           -0.710245   0.039691  -17.89
-## unemp                           0.181100   0.035126    5.16
-## ret                             0.032942   0.026838    1.23
-## period2004-2015                 1.422501   1.460454    0.97
-## pm_uer:pgs.swb                  0.002971   0.004435    0.67
-## pm_uer:period2004-2015          0.026361   0.009482    2.78
-## lnwlth:period2004-2015         -0.122255   0.095931   -1.27
-## lninc:period2004-2015           0.004052   0.011927    0.34
-## negwlth:period2004-2015         0.014173   0.073031    0.19
-## marr:period2004-2015            0.164713   0.038604    4.27
-## unemp:period2004-2015           0.061262   0.044524    1.38
-## ret:period2004-2015             0.058962   0.032741    1.80
-## pm_uer:pgs.swb:period2004-2015  0.000733   0.003303    0.22
-##                                            Pr(&gt;|t|)    
-## (intercept)                            0.0000000052 ***
-## pm_uer                                 0.0000949610 ***
-## lnwlth                                       0.4648    
-## lninc                                        0.0112 *  
-## negwlth                                      0.0091 ** 
-## marr                           &lt; 0.0000000000000002 ***
-## unemp                                  0.0000002533 ***
-## ret                                          0.2197    
-## period2004-2015                              0.3301    
-## pm_uer:pgs.swb                               0.5028    
-## pm_uer:period2004-2015                       0.0054 ** 
-## lnwlth:period2004-2015                       0.2025    
-## lninc:period2004-2015                        0.7340    
-## negwlth:period2004-2015                      0.8461    
-## marr:period2004-2015                   0.0000198624 ***
-## unemp:period2004-2015                        0.1688    
-## ret:period2004-2015                          0.0717 .  
-## pm_uer:pgs.swb:period2004-2015               0.8244    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Total Sum of Squares:    201000
-## Residual Sum of Squares: 199000
-## R-Squared:      0.00808
-## Adj. R-Squared: 0.00785
-## F-statistic: 33.8493 on 17 and 70607 DF, p-value: &lt;0.0000000000000002</code></pre>
+<pre class="r"><code>mktab(fd.gxe)</code></pre>
+<pre><code>##                                 Estimate      se sig
+## (intercept)                     0.039996 (0.007) ***
+## pm_uer                         -0.034482 (0.009) ***
+## lnwlth                          0.046495 (0.064)    
+## lninc                          -0.024166 (0.010)   *
+## negwlth                         0.163270 (0.063)  **
+## marr                           -0.710245 (0.040) ***
+## unemp                           0.181100 (0.035) ***
+## ret                             0.032942 (0.027)    
+## period2004-2015                 1.422501 (1.460)    
+## pm_uer:pgs.swb                  0.002971 (0.004)    
+## pm_uer:period2004-2015          0.026361 (0.009)  **
+## lnwlth:period2004-2015         -0.122255 (0.096)    
+## lninc:period2004-2015           0.004052 (0.012)    
+## negwlth:period2004-2015         0.014173 (0.073)    
+## marr:period2004-2015            0.164713 (0.039) ***
+## unemp:period2004-2015           0.061262 (0.045)    
+## ret:period2004-2015             0.058962 (0.033)   +
+## pm_uer:pgs.swb:period2004-2015  0.000733 (0.003)</code></pre>
+</div>
+<div id="hybrid-random-effects-model." class="section level2">
+<h2>“Hybrid” Random Effects model.</h2>
+<pre class="r"><code>hlm.gxe1 = lmer(cesd~(iuer + md_uer + recession)*pgs.swb +
+                 male  + raedyrs + age +
+                 marr + lninc_i + lnwlth_i + negwlth_i +
+                 lninc_md + lnwlth_md + negwlth_md +
+                 (md_unemp + md_ret + iunemp + iret)*pgs.swb +
+                 (1|hhidpn),
+               data=analyze)
+
+mktab(hlm.gxe1)</code></pre>
+<pre><code>##                    Estimate      se sig
+## (Intercept)        8.023194 (1.730) ***
+## iuer               0.074775 (0.013) ***
+## md_uer            -0.005899 (0.003)   +
+## recession          0.015753 (0.015)    
+## pgs.swb            0.070438 (0.087)    
+## male              -0.116186 (0.026) ***
+## raedyrs           -0.059483 (0.005) ***
+## age                0.001904 (0.001)   +
+## marr              -0.474380 (0.018) ***
+## lninc_i           -0.204124 (0.020) ***
+## lnwlth_i          -0.278121 (0.119)   *
+## negwlth_i          1.740209 (0.104) ***
+## lninc_md          -0.026247 (0.006) ***
+## lnwlth_md          0.006975 (0.045)    
+## negwlth_md         0.208865 (0.034) ***
+## md_unemp           0.227600 (0.024) ***
+## md_ret             0.063449 (0.016) ***
+## iunemp             0.892327 (0.068) ***
+## iret               0.173689 (0.044) ***
+## iuer:pgs.swb      -0.019799 (0.013)    
+## md_uer:pgs.swb    -0.001386 (0.003)    
+## recession:pgs.swb -0.035984 (0.015)   *
+## pgs.swb:md_unemp  -0.000608 (0.024)    
+## pgs.swb:md_ret    -0.019949 (0.015)    
+## pgs.swb:iunemp    -0.123342 (0.060)   *
+## pgs.swb:iret      -0.034478 (0.036)</code></pre>
 </div>
 <div id="factor-based-analysis-with-plm." class="section level2">
 <h2>Factor based analysis with plm.</h2>
-<pre class="r"><code>summary(
+<pre class="r"><code>mktab(
   plm(cesd~age + (ret + unemp)*pm_uer + marr + iwendy +
                 (ret+unemp)*pm_uer + lninc+lnwlth+negwlth +
                 (pm_uer + (ret+unemp)*pm_uer):pgs.quart5,
            index='hhidpn',model='within',data=analyze)
 )</code></pre>
 <pre><code>## These series are constants and have been removed: raracem, has_pgs, iwstat, black.x, orace, greatmod, version, black.y</code></pre>
-<pre><code>## Oneway (individual) effect Within Model
-## 
-## Call:
-## plm(formula = cesd ~ age + (ret + unemp) * pm_uer + marr + iwendy + 
-##     (ret + unemp) * pm_uer + lninc + lnwlth + negwlth + (pm_uer + 
-##     (ret + unemp) * pm_uer):pgs.quart5, data = analyze, model = &quot;within&quot;, 
-##     index = &quot;hhidpn&quot;)
-## 
-## Unbalanced Panel: n=9946, T=1-11, N=80569
-## 
-## Residuals :
-##    Min. 1st Qu.  Median 3rd Qu.    Max. 
-##  -5.931  -0.563  -0.123   0.397   7.117 
-## 
-## Coefficients :
-##                                        Estimate Std. Error t-value
-## age                                   -0.137430   0.024310   -5.65
-## ret                                   -0.173524   0.088141   -1.97
-## unemp                                  0.010168   0.140960    0.07
-## pm_uer                                -0.049939   0.012419   -4.02
-## marr                                  -0.474726   0.020961  -22.65
-## iwendy                                 0.149268   0.024193    6.17
-## lninc                                 -0.028320   0.006173   -4.59
-## lnwlth                                -0.034170   0.045324   -0.75
-## negwlth                                0.207563   0.033715    6.16
-## ret:pm_uer                             0.040162   0.014556    2.76
-## unemp:pm_uer                           0.033573   0.023320    1.44
-## pm_uer:pgs.quart5(-0.83,-0.251]       -0.011340   0.017423   -0.65
-## pm_uer:pgs.quart5(-0.251,0.26]        -0.004133   0.017236   -0.24
-## pm_uer:pgs.quart5(0.26,0.835]         -0.011899   0.017496   -0.68
-## pm_uer:pgs.quart5(0.835,3.45]          0.005256   0.017140    0.31
-## ret:pgs.quart5(-0.83,-0.251]          -0.086411   0.124077   -0.70
-## ret:pgs.quart5(-0.251,0.26]           -0.065801   0.123775   -0.53
-## ret:pgs.quart5(0.26,0.835]            -0.108736   0.124347   -0.87
-## ret:pgs.quart5(0.835,3.45]            -0.069007   0.123497   -0.56
-## unemp:pgs.quart5(-0.83,-0.251]        -0.460172   0.202273   -2.28
-## unemp:pgs.quart5(-0.251,0.26]          0.058849   0.198634    0.30
-## unemp:pgs.quart5(0.26,0.835]          -0.145959   0.203376   -0.72
-## unemp:pgs.quart5(0.835,3.45]           0.058959   0.206028    0.29
-## ret:pm_uer:pgs.quart5(-0.83,-0.251]    0.008493   0.020443    0.42
-## ret:pm_uer:pgs.quart5(-0.251,0.26]    -0.004158   0.020357   -0.20
-## ret:pm_uer:pgs.quart5(0.26,0.835]      0.004211   0.020538    0.21
-## ret:pm_uer:pgs.quart5(0.835,3.45]     -0.000469   0.020266   -0.02
-## unemp:pm_uer:pgs.quart5(-0.83,-0.251]  0.075887   0.033470    2.27
-## unemp:pm_uer:pgs.quart5(-0.251,0.26]   0.010179   0.032906    0.31
-## unemp:pm_uer:pgs.quart5(0.26,0.835]    0.011626   0.033830    0.34
-## unemp:pm_uer:pgs.quart5(0.835,3.45]   -0.009935   0.034129   -0.29
-##                                                   Pr(&gt;|t|)    
-## age                                          0.00000001581 ***
-## ret                                                 0.0490 *  
-## unemp                                               0.9425    
-## pm_uer                                       0.00005793980 ***
-## marr                                  &lt; 0.0000000000000002 ***
-## iwendy                                       0.00000000069 ***
-## lninc                                        0.00000448197 ***
-## lnwlth                                              0.4509    
-## negwlth                                      0.00000000075 ***
-## ret:pm_uer                                          0.0058 ** 
-## unemp:pm_uer                                        0.1500    
-## pm_uer:pgs.quart5(-0.83,-0.251]                     0.5151    
-## pm_uer:pgs.quart5(-0.251,0.26]                      0.8105    
-## pm_uer:pgs.quart5(0.26,0.835]                       0.4964    
-## pm_uer:pgs.quart5(0.835,3.45]                       0.7591    
-## ret:pgs.quart5(-0.83,-0.251]                        0.4862    
-## ret:pgs.quart5(-0.251,0.26]                         0.5950    
-## ret:pgs.quart5(0.26,0.835]                          0.3819    
-## ret:pgs.quart5(0.835,3.45]                          0.5763    
-## unemp:pgs.quart5(-0.83,-0.251]                      0.0229 *  
-## unemp:pgs.quart5(-0.251,0.26]                       0.7670    
-## unemp:pgs.quart5(0.26,0.835]                        0.4730    
-## unemp:pgs.quart5(0.835,3.45]                        0.7748    
-## ret:pm_uer:pgs.quart5(-0.83,-0.251]                 0.6778    
-## ret:pm_uer:pgs.quart5(-0.251,0.26]                  0.8381    
-## ret:pm_uer:pgs.quart5(0.26,0.835]                   0.8376    
-## ret:pm_uer:pgs.quart5(0.835,3.45]                   0.9815    
-## unemp:pm_uer:pgs.quart5(-0.83,-0.251]               0.0234 *  
-## unemp:pm_uer:pgs.quart5(-0.251,0.26]                0.7571    
-## unemp:pm_uer:pgs.quart5(0.26,0.835]                 0.7311    
-## unemp:pm_uer:pgs.quart5(0.835,3.45]                 0.7710    
-## ---
-## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-## 
-## Total Sum of Squares:    116000
-## Residual Sum of Squares: 114000
-## R-Squared:      0.0166
-## Adj. R-Squared: -0.122
-## F-statistic: 38.5131 on 31 and 70592 DF, p-value: &lt;0.0000000000000002</code></pre>
+<pre><code>##                                        Estimate      se sig
+## age                                   -0.137430 (0.024) ***
+## ret                                   -0.173524 (0.088)   *
+## unemp                                  0.010168 (0.141)    
+## pm_uer                                -0.049939 (0.012) ***
+## marr                                  -0.474726 (0.021) ***
+## iwendy                                 0.149268 (0.024) ***
+## lninc                                 -0.028320 (0.006) ***
+## lnwlth                                -0.034170 (0.045)    
+## negwlth                                0.207563 (0.034) ***
+## ret:pm_uer                             0.040162 (0.015)  **
+## unemp:pm_uer                           0.033573 (0.023)    
+## pm_uer:pgs.quart5(-0.83,-0.251]       -0.011340 (0.017)    
+## pm_uer:pgs.quart5(-0.251,0.26]        -0.004133 (0.017)    
+## pm_uer:pgs.quart5(0.26,0.835]         -0.011899 (0.017)    
+## pm_uer:pgs.quart5(0.835,3.45]          0.005256 (0.017)    
+## ret:pgs.quart5(-0.83,-0.251]          -0.086411 (0.124)    
+## ret:pgs.quart5(-0.251,0.26]           -0.065801 (0.124)    
+## ret:pgs.quart5(0.26,0.835]            -0.108736 (0.124)    
+## ret:pgs.quart5(0.835,3.45]            -0.069007 (0.123)    
+## unemp:pgs.quart5(-0.83,-0.251]        -0.460172 (0.202)   *
+## unemp:pgs.quart5(-0.251,0.26]          0.058849 (0.199)    
+## unemp:pgs.quart5(0.26,0.835]          -0.145959 (0.203)    
+## unemp:pgs.quart5(0.835,3.45]           0.058959 (0.206)    
+## ret:pm_uer:pgs.quart5(-0.83,-0.251]    0.008493 (0.020)    
+## ret:pm_uer:pgs.quart5(-0.251,0.26]    -0.004158 (0.020)    
+## ret:pm_uer:pgs.quart5(0.26,0.835]      0.004211 (0.021)    
+## ret:pm_uer:pgs.quart5(0.835,3.45]     -0.000469 (0.020)    
+## unemp:pm_uer:pgs.quart5(-0.83,-0.251]  0.075887 (0.033)   *
+## unemp:pm_uer:pgs.quart5(-0.251,0.26]   0.010179 (0.033)    
+## unemp:pm_uer:pgs.quart5(0.26,0.835]    0.011626 (0.034)    
+## unemp:pm_uer:pgs.quart5(0.835,3.45]   -0.009935 (0.034)</code></pre>
 <p>Evidence of increasing uncertainty in retirement.</p>
 <pre><code>## `geom_smooth()` using method = 'gam'</code></pre>
 <pre><code>## Warning: Removed 380308 rows containing non-finite values (stat_smooth).</code></pre>
